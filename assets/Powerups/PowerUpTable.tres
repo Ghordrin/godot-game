@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="PowerUpTable" format=3 uid="uid://bkbmd5ethceri"]
+
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/powerup_data.gd" id="1_cvt4y"]
+[ext_resource type="Resource" uid="uid://c85gt45v5h1g6" path="res://assets/Powerups/projectile_count.tres" id="2_1a6ub"]
+[ext_resource type="Resource" uid="uid://do8at0srehtvb" path="res://assets/Powerups/phase_shot.tres" id="2_7fk72"]
+[ext_resource type="Resource" uid="uid://cog8l1mwnv543" path="res://assets/Powerups/movement_speed_up.tres" id="2_hl6an"]
+[ext_resource type="Resource" uid="uid://uqvigd0jyngq" path="res://assets/Powerups/damage_up.tres" id="3_1a6ub"]
+[ext_resource type="Resource" path="res://assets/Powerups/precision_lens.tres" id="3_14tjd"]
+[ext_resource type="Resource" path="res://assets/Powerups/kinetic_drift.tres" id="4_5kbvl"]
+[ext_resource type="Script" uid="uid://nc4wjdby771l" path="res://scripts/loot_table.gd" id="4_7fk72"]
+[ext_resource type="Resource" path="res://assets/Powerups/impact_coil.tres" id="6_anh6u"]
+[ext_resource type="Resource" path="res://assets/Powerups/voltaic_chamber.tres" id="9_jcwu3"]
+
+[resource]
+script = ExtResource("4_7fk72")
+common_powerups = Array[ExtResource("1_cvt4y")]([ExtResource("2_7fk72"), ExtResource("3_14tjd"), ExtResource("4_5kbvl")])
+rare_powerups = Array[ExtResource("1_cvt4y")]([ExtResource("3_1a6ub"), ExtResource("2_1a6ub"), ExtResource("9_jcwu3")])
+epic_powerups = Array[ExtResource("1_cvt4y")]([ExtResource("2_hl6an")])
+legendary_powerups = Array[ExtResource("1_cvt4y")]([ExtResource("6_anh6u")])
+metadata/_custom_type_script = "uid://nc4wjdby771l"

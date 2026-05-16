@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://ig40h4nx82ix"]
+
+[ext_resource type="Script" uid="uid://cjfb1mrl5sk22" path="res://scripts/PowerupBeam.gd" id="1_7oer7"]
+
+[node name="PowerUpBeam2" type="Node2D" unique_id=833755796]
+script = ExtResource("1_7oer7")
+
+[node name="OuterGlow" type="Sprite2D" parent="." unique_id=1309630297]
+
+[node name="CoreBeam" type="Sprite2D" parent="." unique_id=977849585]
+
+[node name="SparkParticles" type="GPUParticles2D" parent="." unique_id=155123093]
+
+[node name="GroundDecal" type="Sprite2D" parent="." unique_id=1121174929]
+
+[node name="PulseRing" type="Sprite2D" parent="." unique_id=1062316663]
+
+[node name="FloatingLabel" type="Label" parent="." unique_id=1471744430]
+offset_right = 40.0
+offset_bottom = 23.0
+horizontal_alignment = 1
+vertical_alignment = 1

@@ -1,0 +1,42 @@
+[gd_scene format=3 uid="uid://cpn0ship8hulm"]
+
+[ext_resource type="Script" uid="uid://cjfb1mrl5sk22" path="res://scripts/PowerupBeam.gd" id="1_beam"]
+
+[node name="LootBeam" type="Node2D" unique_id=39705028]
+z_index = 2
+y_sort_enabled = true
+script = ExtResource("1_beam")
+
+[node name="OuterGlow" type="Sprite2D" parent="." unique_id=991386064]
+texture_filter = 1
+position = Vector2(0, -64)
+
+[node name="CoreBeam" type="Sprite2D" parent="." unique_id=1200731981]
+z_index = 1
+texture_filter = 1
+position = Vector2(0, -64)
+
+[node name="SparkParticles" type="GPUParticles2D" parent="." unique_id=327676937]
+position = Vector2(0, -20)
+amount = 14
+
+[node name="GroundDecal" type="Sprite2D" parent="." unique_id=875257990]
+z_index = 4
+y_sort_enabled = true
+texture_filter = 1
+scale = Vector2(1.5, 0.45)
+
+[node name="PulseRing" type="Sprite2D" parent="." unique_id=2139176173]
+modulate = Color(1, 1, 1, 0)
+z_index = 4
+y_sort_enabled = true
+texture_filter = 1
+scale = Vector2(1.5, 0.45)
+
+[node name="FloatingLabel" type="Label" parent="." unique_id=592559228]
+offset_left = -59.0
+offset_top = -110.0
+offset_right = 61.0
+offset_bottom = -87.0
+horizontal_alignment = 1
+vertical_alignment = 1

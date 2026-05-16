@@ -1,0 +1,68 @@
+[gd_scene format=3 uid="uid://oomb0pblxebf"]
+
+[ext_resource type="PackedScene" uid="uid://bgu4oipoe5lyf" path="res://scenes/main.tscn" id="1_nnsk1"]
+[ext_resource type="PackedScene" uid="uid://c843ovyhnhc3x" path="res://scenes/player.tscn" id="2_71j4m"]
+[ext_resource type="Script" uid="uid://ckh7dqbc426jw" path="res://scripts/wave_manager.gd" id="4_i7141"]
+[ext_resource type="PackedScene" uid="uid://cgw46tmagm4yw" path="res://scenes/enemy.tscn" id="5_4mrxx"]
+[ext_resource type="Resource" uid="uid://bkbmd5ethceri" path="res://assets/Powerups/PowerUpTable.tres" id="5_e3hyu"]
+[ext_resource type="PackedScene" uid="uid://b8krvu66hy0ce" path="res://scenes/BossEnemy.tscn" id="6_i7141"]
+[ext_resource type="PackedScene" uid="uid://b14x7adr63yww" path="res://scenes/WaveHud.tscn" id="6_qfnet"]
+[ext_resource type="PackedScene" uid="uid://cb208k2oo1yx3" path="res://scenes/PhantomBoss.tscn" id="7_4mrxx"]
+[ext_resource type="Shader" uid="uid://xea81s3n4hut" path="res://scenes/world.gdshader" id="8_4mrxx"]
+[ext_resource type="Script" uid="uid://c1iuc3ol6ucw5" path="res://scenes/scale_rect.gd" id="9_7r4gi"]
+[ext_resource type="PackedScene" uid="uid://h31striv72lc" path="res://scenes/ShopUI.tscn" id="10_w7kh3"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7r4gi"]
+shader = ExtResource("8_4mrxx")
+shader_parameter/resolution_x = 1980
+shader_parameter/resolution_y = 1020
+shader_parameter/color_bit_depth = 13
+shader_parameter/dither_strength = 0.5
+shader_parameter/jitter_amount = 0.0
+shader_parameter/jitter_speed = 0.0
+shader_parameter/jitter_frequency = 180.0
+shader_parameter/chromatic_aberration_strength = 0.015
+shader_parameter/vignette_strength = 0.50400002394
+shader_parameter/vignette_radius = 0.786000037335
+
+[node name="World" type="Node2D" unique_id=1452919651]
+
+[node name="TileMapLayer" parent="." unique_id=251959330 instance=ExtResource("1_nnsk1")]
+
+[node name="Player" parent="." unique_id=976265754 instance=ExtResource("2_71j4m")]
+position = Vector2(644, 41)
+
+[node name="WaveManager" type="Node" parent="." unique_id=1763136326 node_paths=PackedStringArray("spawn_points") groups=["wave_manager"]]
+script = ExtResource("4_i7141")
+shop_interval = 1
+shop_scene = ExtResource("10_w7kh3")
+loot_table = ExtResource("5_e3hyu")
+enemy_scenes = Array[PackedScene]([ExtResource("5_4mrxx")])
+boss_scenes = Array[PackedScene]([ExtResource("6_i7141"), ExtResource("7_4mrxx")])
+spawn_radius = 300.0
+spawn_points = [NodePath("../SpawnLocations/SpawnNorth"), NodePath("../SpawnLocations/SpawnSouth")]
+base_enemy_count = 5
+boss_health_mult = 2.0
+
+[node name="SpawnLocations" type="Node" parent="." unique_id=1532555716]
+
+[node name="SpawnNorth" type="Marker2D" parent="SpawnLocations" unique_id=212740608]
+position = Vector2(556, -370)
+
+[node name="SpawnSouth" type="Marker2D" parent="SpawnLocations" unique_id=1827401898]
+position = Vector2(542, 537)
+
+[node name="WaveHud" parent="." unique_id=1085045897 instance=ExtResource("6_qfnet")]
+layer = 3
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=574328789]
+visible = false
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer" unique_id=890031121]
+visible = false
+material = SubResource("ShaderMaterial_7r4gi")
+offset_right = 40.0
+offset_bottom = 40.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("9_7r4gi")

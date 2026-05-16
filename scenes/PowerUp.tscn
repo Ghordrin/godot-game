@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://xduk3ix6qxt3"]
+
+[ext_resource type="Script" uid="uid://h0c6cyoqsrds" path="res://scripts/powerup_pickup.gd" id="1_0ocr6"]
+[ext_resource type="PackedScene" uid="uid://cpn0ship8hulm" path="res://scenes/Powerupbeam.tscn" id="2_coxm5"]
+[ext_resource type="AudioStream" uid="uid://dk5es2qiv70xp" path="res://assets/loot assets/PickupSound.mp3" id="3_coxm5"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_xno1n"]
+
+[node name="PowerUp" type="Area2D" unique_id=1830855160]
+script = ExtResource("1_0ocr6")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=525019152]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=463282052]
+y_sort_enabled = true
+shape = SubResource("CircleShape2D_xno1n")
+
+[node name="PowerupBeam" parent="." unique_id=833755796 instance=ExtResource("2_coxm5")]
+
+[node name="PickupSound" type="AudioStreamPlayer2D" parent="." unique_id=53367122]
+visibility_layer = 32
+z_index = 2
+y_sort_enabled = true
+stream = ExtResource("3_coxm5")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]

@@ -1,0 +1,55 @@
+[gd_scene format=3 uid="uid://h31striv72lc"]
+
+[ext_resource type="Script" uid="uid://d2kweppqc5sdb" path="res://scripts/shop_ui.gd" id="1_shop"]
+
+[node name="ShopUI" type="CanvasLayer" unique_id=9714532]
+process_mode = 3
+visible = false
+script = ExtResource("1_shop")
+available_powerups_count = 3
+rare_cost = 150
+epic_cost = 200
+legendary_cost = 1000
+
+[node name="Panel" type="PanelContainer" parent="." unique_id=261655701]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 60.0
+offset_top = 40.0
+offset_right = -60.0
+offset_bottom = -40.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel" unique_id=625767141]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="WaveLabel" type="Label" parent="Panel/VBoxContainer" unique_id=1146706615]
+layout_mode = 2
+text = "Wave Complete - Shop"
+horizontal_alignment = 1
+
+[node name="GoldLabel" type="Label" parent="Panel/VBoxContainer" unique_id=1899548463]
+layout_mode = 2
+text = "Gold: 0"
+horizontal_alignment = 1
+
+[node name="PowerupsScrollContainer" type="ScrollContainer" parent="Panel/VBoxContainer" unique_id=644688598]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PowerupsVBox" type="VBoxContainer" parent="Panel/VBoxContainer/PowerupsScrollContainer" unique_id=1000706429]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EquipmentLabel" type="Label" parent="Panel/VBoxContainer" unique_id=1321441730]
+layout_mode = 2
+text = "Equip Powerups:"
+
+[node name="EquipmentContainer" type="HBoxContainer" parent="Panel/VBoxContainer" unique_id=1541854101]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ContinueButton" type="Button" parent="Panel/VBoxContainer" unique_id=295965074]
+layout_mode = 2
+text = "Continue to Next Wave"

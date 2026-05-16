@@ -1,0 +1,120 @@
+[gd_scene format=3 uid="uid://cb208k2oo1yx3"]
+
+[ext_resource type="Script" uid="uid://bunh7eiuamla3" path="res://scripts/phantom_boss.gd" id="1_phantom"]
+[ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://scripts/health_component.gd" id="2_hcomp"]
+[ext_resource type="Texture2D" uid="uid://b8b56158q0a4a" path="res://assets/enemies/Tiled_files/Slime1_Idle_full.png" id="3_sprite"]
+[ext_resource type="PackedScene" uid="uid://by4o8pk82m12k" path="res://scenes/DamageNumber.tscn" id="4_dmgnum"]
+[ext_resource type="PackedScene" uid="uid://m5gvnpyrt5qo" path="res://scenes/GoldPickUp.tscn" id="5_gold"]
+[ext_resource type="PackedScene" uid="uid://xduk3ix6qxt3" path="res://scenes/PowerUp.tscn" id="6_powerup"]
+[ext_resource type="PackedScene" path="res://scenes/BossProjectile.tscn" id="7_bproj"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_1"]
+atlas = ExtResource("3_sprite")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_2"]
+atlas = ExtResource("3_sprite")
+region = Rect2(64, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3"]
+atlas = ExtResource("3_sprite")
+region = Rect2(128, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_4"]
+atlas = ExtResource("3_sprite")
+region = Rect2(192, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5"]
+atlas = ExtResource("3_sprite")
+region = Rect2(256, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6"]
+atlas = ExtResource("3_sprite")
+region = Rect2(320, 0, 64, 64)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_phantom"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 12.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hurtbox"]
+radius = 16.0
+
+[node name="PhantomBoss" type="CharacterBody2D" unique_id=95768359]
+scale = Vector2(2.5, 2.5)
+collision_layer = 2
+collision_mask = 4
+script = ExtResource("1_phantom")
+boss_projectile_scene = ExtResource("7_bproj")
+loot_item_scene = ExtResource("6_powerup")
+gold_pickup_scene = ExtResource("5_gold")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1020210213]
+modulate = Color(0.6, 0.3, 0.9, 1)
+z_index = 2
+texture_filter = 1
+sprite_frames = SubResource("SpriteFrames_phantom")
+animation = &"idle"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1604876095]
+shape = SubResource("CircleShape2D_body")
+
+[node name="HealthComponent" type="Node" parent="." unique_id=1875818676]
+script = ExtResource("2_hcomp")
+max_health = 250
+damage_number_scene = ExtResource("4_dmgnum")
+
+[node name="Hurtbox" type="Area2D" parent="." unique_id=24395941]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=1708529089]
+shape = SubResource("CircleShape2D_hurtbox")
+
+[node name="HealthBarContainer" type="Control" parent="." unique_id=1094968118]
+layout_mode = 3
+anchors_preset = 0
+offset_left = -14.0
+offset_top = -22.0
+offset_right = 14.0
+offset_bottom = -14.0
+
+[node name="BossNameLabel" type="Label" parent="HealthBarContainer" unique_id=1243333327]
+layout_mode = 0
+offset_right = 28.0
+offset_bottom = 6.0
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HealthBar" type="ProgressBar" parent="HealthBarContainer" unique_id=811580739]
+layout_mode = 0
+offset_top = 5.0
+offset_right = 28.0
+offset_bottom = 8.0
+max_value = 250.0
+value = 250.0
+show_percentage = false
