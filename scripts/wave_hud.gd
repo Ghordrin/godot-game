@@ -263,7 +263,7 @@ func _on_shop_visibility_changed() -> void:
 
 
 func _on_build_changed() -> void:
-	var equipped_entries := PlayerInventory.get_equipped_powerups_with_ranks()
+	var equipped_entries: Array = PlayerInventory.get_equipped_powerups_with_ranks()
 
 	if equipped_entries.is_empty():
 		build_label.text = "Empty"
@@ -278,7 +278,7 @@ func _on_build_changed() -> void:
 	build_label.text = "\n".join(build_parts)
 
 	if not PlayerInventory.active_combinations.is_empty():
-		var combo_names := PlayerInventory.get_combination_names()
+		var combo_names: Array = PlayerInventory.get_combination_names()
 		build_label.text += "\n\n" + "\n".join(combo_names)
 
 # ══════════════════════════════════════════════════════════════════════
@@ -315,7 +315,7 @@ func _refresh_breakdown_panel() -> void:
 	bvbox.add_theme_constant_override("separation", 4)
 	bm.add_child(bvbox)
 
-	var breakdown := DamageMeter.get_breakdown()
+	var breakdown: Dictionary = DamageMeter.get_breakdown()
 	if breakdown.is_empty():
 		var empty_lbl := Label.new()
 		empty_lbl.text = "No damage yet"

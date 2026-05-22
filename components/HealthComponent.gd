@@ -32,21 +32,7 @@ func take_damage_packet(packet: DamagePacket) -> void:
 	if packet.is_empty():
 		return
 
-	var total_final_damage: int = 0
-
-	for entry: Dictionary in packet.entries:
-		var amount: float = float(entry.amount)
-		var damage_type: String = String(entry.type)
-
-		if amount <= 0.0:
-			continue
-
-		var final_amount: float = _resolve_single_damage_entry(amount, damage_type)
-
-		if final_amount <= 0.0:
-			continue
-
-		total_final_damage += max(1, int(round(final_amount)))
+	var total_final_damage: int = DamageMitigation.resolve_packet(get_parent(), packet)
 
 	if total_final_damage <= 0:
 		return
@@ -57,29 +43,6 @@ func take_damage_packet(packet: DamagePacket) -> void:
 
 	if current_health <= 0:
 		die()
-
-
-func _resolve_single_damage_entry(amount: float, damage_type: String) -> float:
-	var actual: float = amount
-
-	var affix := get_parent().get_node_or_null("AffixComponent") as AffixComponent
-	var shield := get_parent().get_node_or_null("ShieldComponent") as ShieldComponent
-	var armor := get_parent().get_node_or_null("ArmorComponent") as ArmorComponent
-
-	if affix != null:
-		actual = affix.modify_incoming_damage(actual, damage_type)
-		if actual <= 0.0:
-			return 0.0
-
-	if shield != null and not shield.is_broken and damage_type != "poison" and damage_type != "combo":
-		actual = shield.absorb(actual)
-		if actual <= 0.0:
-			return 0.0
-
-	if armor != null:
-		actual = armor.reduce(actual, damage_type)
-
-	return actual
 
 
 func heal(amount: int) -> void:

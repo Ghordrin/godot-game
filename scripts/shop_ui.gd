@@ -258,7 +258,7 @@ func _on_reroll_pressed() -> void:
 # ══════════════════════════════════════════════════════════════════════
 
 func _create_card(powerup: PowerUpData) -> PanelContainer:
-	var current_rank := PlayerInventory.get_powerup_rank(powerup)
+	var current_rank: int = PlayerInventory.get_powerup_rank(powerup)
 
 	# Pick the correct scene based on rarity.
 	# Falls back to common_card_scene until other rarity scenes are designed.
@@ -322,7 +322,7 @@ func _update_reroll_button() -> void:
 	if reroll_btn == null:
 		return
 	var cost := _get_reroll_cost()
-	var can_afford := PlayerInventory.gold >= cost
+	var can_afford: bool = PlayerInventory.gold >= cost
 	reroll_btn.text = "↺ REROLL  %d" % cost
 	reroll_btn.disabled = not can_afford or selection_made
 	reroll_btn.add_theme_color_override("font_color",
@@ -334,7 +334,7 @@ func _update_reroll_button() -> void:
 	var heal_cost := _get_heal_cost()
 	var player_hc := _find_player_health()
 	var already_full := player_hc != null and player_hc.current_health >= player_hc.max_health
-	var can_afford_heal := PlayerInventory.gold >= heal_cost
+	var can_afford_heal: bool = PlayerInventory.gold >= heal_cost
 	heal_btn.disabled = not can_afford_heal or already_full
 	heal_btn.add_theme_color_override("font_color",
 		Color(0.85, 0.30, 0.30) if (can_afford_heal and not already_full) else COLOR_DISABLED)
@@ -367,7 +367,7 @@ func _update_current_build_display() -> void:
 	if current_build_label == null:
 		return
 
-	var equipped := PlayerInventory.get_equipped_powerups_with_ranks()
+	var equipped: Array = PlayerInventory.get_equipped_powerups_with_ranks()
 	if equipped.is_empty():
 		current_build_label.text = "EMPTY"
 		current_build_label.add_theme_color_override("font_color", COLOR_MUTED)
