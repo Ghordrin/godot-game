@@ -157,9 +157,7 @@ func _try_damage(target: Node) -> void:
 	if health_component == null:
 		return
 
-	var status_component: StatusEffectComponent = enemy_root.get_node_or_null("StatusEffectComponent") as StatusEffectComponent
-	if status_component != null and status_component.immune:
-		return
+	var status_component := enemy_root.get_node_or_null("StatusEffectComponent") as StatusEffectComponent
 
 	_hit_tracker.clear()
 
@@ -222,6 +220,8 @@ func _apply_packet_status_effects(
 	status_component: StatusEffectComponent,
 	packet: DamagePacket
 ) -> void:
+	if status_component == null:
+		return
 	if packet == null or packet.is_empty():
 		return
 
@@ -231,21 +231,20 @@ func _apply_packet_status_effects(
 
 		match damage_type:
 			"fire":
-				if status_component != null:
-					status_component.apply_burn(amount / 8.0, 3.0, 0.5)
+				status_component.apply_burn(amount / 8.0, 3.0, 0.5)
 
 			"ice":
-				if status_component != null:
-					status_component.apply_slow(0.25, 2.0, amount)
+				status_component.apply_slow(0.25, 2.0)
 
 			"lightning":
-				if status_component != null:
-					status_component.apply_stun(0.35)
+				status_component.apply_stun(0.35)
 				_chain_lightning(enemy_root, amount, 1)
 
 			"poison":
-				if status_component != null:
-					status_component.apply_poison(amount / 10.0, 4.0, 0.5)
+				status_component.apply_poison(amount / 10.0, 4.0, 0.5)
+
+			"thermal", "magnetic", "corrosive", "viral", "plasma", "neurotoxin":
+				status_component.apply_combo_effect(damage_type, amount)
 
 			_:
 				pass
@@ -355,7 +354,7 @@ func _chain_lightning(source_enemy: Node, element_pool: float, rank: int) -> voi
 		if hc != null and hc.has_method("take_damage"):
 			_deal(nearest_enemy, hc, current_damage, DMG_LIGHTNING)
 
-		var chained_status: StatusEffectComponent = nearest_enemy.get_node_or_null("StatusEffectComponent") as StatusEffectComponent
+		var chained_status := nearest_enemy.get_node_or_null("StatusEffectComponent") as StatusEffectComponent
 		if chained_status != null:
 			chained_status.apply_stun(0.35)
 
@@ -376,15 +375,14 @@ func _deal(enemy_root: Node, health_component: Node, amount: float, color: Color
 	if not _hit_tracker.has(id):
 		_hit_tracker[id] = {
 			"root": enemy_root,
-			"position": enemy_root.global_position,
 			"hits": []
 		}
 
-		_hit_tracker[id]["hits"].append({
-			"amount": amount,
-			"color": color,
-			"type": damage_type
-		})
+	_hit_tracker[id]["hits"].append({
+		"amount": amount,
+		"color": DamageVisuals.get_color(damage_type),
+		"type": damage_type
+	})
 
 	DamageMeter.record(amount, damage_type)
 
@@ -392,8 +390,12 @@ func _deal(enemy_root: Node, health_component: Node, amount: float, color: Color
 func _flush_damage_numbers() -> void:
 	for id in _hit_tracker:
 		var entry: Dictionary = _hit_tracker[id]
-		var spawn_pos: Vector2 = entry.get("position", Vector2.ZERO)
 
+		var root: Node2D = entry.get("root", null) as Node2D
+		if root == null:
+			continue
+
+		var spawn_pos: Vector2 = DamageNumberSpawner.get_anchor_position(root)
 		var index: int = 0
 
 		for hit: Dictionary in entry["hits"]:
@@ -443,22 +445,6 @@ func _color_to_type(color: Color) -> String:
 	if color == DMG_COMBO:
 		return "combo"
 	return "physical"
-
-
-func _damage_type_to_color(damage_type: String) -> Color:
-	match damage_type:
-		"fire":
-			return DMG_FIRE
-		"ice":
-			return DMG_ICE
-		"lightning":
-			return DMG_LIGHTNING
-		"poison":
-			return DMG_POISON
-		"combo":
-			return DMG_COMBO
-		_:
-			return DMG_PHYSICAL
 
 
 func _draw_chain_arc(from_pos: Vector2, to_pos: Vector2) -> void:

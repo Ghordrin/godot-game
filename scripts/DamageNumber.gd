@@ -1,71 +1,42 @@
 extends Node2D
 class_name DamageNumber
 
-@onready var box: VBoxContainer = $VBoxContainer
-@onready var amount_label: Label = $VBoxContainer/AmountLabel
-@onready var type_label: Label = $VBoxContainer/TypeLabel
+@onready var label: Label = $Label
 
 var _lifetime: float = 0.9
 var _elapsed: float = 0.0
 var _start_pos: Vector2 = Vector2.ZERO
-var _centered: bool = false
 
 
-func setup(
-	amount: float,
-	damage_type: String,
-	color: Color,
-	is_dot: bool = false
-) -> void:
+func setup(amount: float, damage_type: String, color: Color, is_dot: bool = false) -> void:
 	z_index = 4096
 	z_as_relative = false
 
 	_start_pos = global_position
 	_elapsed = 0.0
-	_centered = false
 
-	box.position = Vector2.ZERO
-	box.size = Vector2.ZERO
-	box.custom_minimum_size = Vector2.ZERO
+	var text: String = str(int(round(amount)))
+	if damage_type != "" and damage_type.to_upper() != "PHYSICAL":
+		text += " " + damage_type.to_upper()
 
-	amount_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	type_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var font_size: int = 42
+	if amount >= 75.0:
+		font_size = 52
+	if amount >= 150.0:
+		font_size = 62
+	if is_dot:
+		font_size = 28
 
-	amount_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	type_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_constant_override("outline_size", 5)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
 
-	amount_label.text = str(int(round(amount)))
-	type_label.text = damage_type.to_upper()
-
-	amount_label.add_theme_color_override("font_color", color)
-	type_label.add_theme_color_override("font_color", color)
-
-	amount_label.add_theme_font_size_override("font_size", 48 if not is_dot else 28)
-	type_label.add_theme_font_size_override("font_size", 18 if not is_dot else 12)
-
-	amount_label.add_theme_constant_override("outline_size", 5)
-	type_label.add_theme_constant_override("outline_size", 4)
-
-	amount_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	type_label.add_theme_color_override("font_outline_color", Color.BLACK)
-
-	call_deferred("_center_box")
-
-
-func _center_box() -> void:
-	if not is_instance_valid(box):
-		return
-
-	var box_size: Vector2 = box.get_combined_minimum_size()
-
-	if box_size.x <= 0.0:
-		box_size.x = 120.0
-	if box_size.y <= 0.0:
-		box_size.y = 70.0
-
-	box.size = box_size
-	box.position = -box_size * 0.5
-	_centered = true
+	var width: float = float(text.length()) * float(font_size) * 0.45
+	label.position = Vector2(-width * 0.5, -font_size * 0.5)
 
 
 func _process(delta: float) -> void:
@@ -73,10 +44,7 @@ func _process(delta: float) -> void:
 	var t: float = clamp(_elapsed / _lifetime, 0.0, 1.0)
 
 	global_position = _start_pos + Vector2(0.0, -70.0 * t)
-
-	var pop: float = 1.0 + sin(t * PI) * 0.15
-	scale = Vector2.ONE * pop
-
+	scale = Vector2.ONE * (1.0 + sin(t * PI) * 0.12)
 	modulate.a = 1.0 - max(0.0, (t - 0.55) / 0.45)
 
 	if _elapsed >= _lifetime:

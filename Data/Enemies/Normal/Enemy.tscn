@@ -120,3 +120,6 @@ script = ExtResource("15_g0wcc")
 [node name="StatusEffectComponent" type="Node" parent="." unique_id=1318317081]
 script = ExtResource("12_lbu74")
 metadata/_custom_type_script = "uid://dn6lad6evss5"
+
+[node name="DamageNumberAnchor" type="Marker2D" parent="." unique_id=1547600764]
+position = Vector2(0, -23.5)
