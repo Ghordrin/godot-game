@@ -141,7 +141,7 @@ func _on_shop_visibility_changed() -> void:
 
 
 func _on_build_changed() -> void:
-	var equipped_entries := PlayerInventory.get_equipped_powerups_with_ranks()
+	var equipped_entries: Array = PlayerInventory.get_equipped_powerups_with_ranks()
 	
 	if equipped_entries.is_empty():
 		build_label.text = "Empty"
@@ -153,14 +153,14 @@ func _on_build_changed() -> void:
 		var rank: int = entry.rank
 		
 		# Abbreviate name
-		var abbrev := _abbreviate_powerup_name(powerup.display_name)
+		var abbrev: String = _abbreviate_powerup_name(powerup.display_name)
 		build_parts.append("%s %d" % [abbrev, rank])
 	
 	build_label.text = "\n".join(build_parts)  # Stack vertically for HUD
 
 	# Show all active combinations
 	if not PlayerInventory.active_combinations.is_empty():
-		var combo_names := PlayerInventory.get_combination_names()
+		var combo_names: Array = PlayerInventory.get_combination_names()
 		build_label.text += "\n\n" + "\n".join(combo_names)
 
 
