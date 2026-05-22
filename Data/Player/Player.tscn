@@ -1,16 +1,16 @@
 [gd_scene format=3 uid="uid://c843ovyhnhc3x"]
 
 [ext_resource type="Texture2D" uid="uid://cev3jqon6dqwa" path="res://assets/Character0/Character0_Idle.png" id="1_3vyb7"]
-[ext_resource type="Script" uid="uid://cxnp5nyv8bc6v" path="res://scripts/player.gd" id="1_g2els"]
-[ext_resource type="PackedScene" uid="uid://s5dfuo3q8qlx" path="res://scenes/projectile.tscn" id="2_d2wvv"]
-[ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://scripts/health_component.gd" id="3_qhqgy"]
+[ext_resource type="Script" uid="uid://cxnp5nyv8bc6v" path="res://Data/Player/Player.gd" id="1_g2els"]
+[ext_resource type="PackedScene" uid="uid://s5dfuo3q8qlx" path="res://Data/World/Resources/projectile.tscn" id="2_d2wvv"]
+[ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://components/HealthComponent.gd" id="3_qhqgy"]
 [ext_resource type="Texture2D" uid="uid://ckg5a2sdnbi3q" path="res://assets/Character0/Character0_Walk.png" id="3_smehm"]
 [ext_resource type="Texture2D" uid="uid://dww0ngawrf45e" path="res://assets/health/health_bar_under.png" id="4_fjrip"]
 [ext_resource type="Texture2D" uid="uid://cnl75j7i1kn5u" path="res://assets/health/hp_bar.png" id="4_qlg0r"]
 [ext_resource type="Texture2D" uid="uid://b2aawv7tjsi8m" path="res://assets/Character0/Character1_Walk.png" id="4_ur7pv"]
 [ext_resource type="Script" uid="uid://c1a1irgpyt41k" path="res://scripts/world_health_bar.gd" id="5_tuyoq"]
 [ext_resource type="Texture2D" uid="uid://jk2i6jkyioqr" path="res://assets/health/health_bar_over.png" id="6_smehm"]
-[ext_resource type="Script" uid="uid://gqpea30jlvkp" path="res://scripts/stats_component.gd" id="10_y4r1p"]
+[ext_resource type="Script" uid="uid://gqpea30jlvkp" path="res://components/StatsComponent.gd" id="10_y4r1p"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_g2els"]
 atlas = ExtResource("1_3vyb7")

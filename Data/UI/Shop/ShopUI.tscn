@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://h31striv72lc"]
+
+[ext_resource type="Script" uid="uid://d2kweppqc5sdb" path="res://scripts/shop_ui.gd" id="1_shop"]
+[ext_resource type="PackedScene" uid="uid://bg45jfjmf6lsa" path="res://Data/UI/Shop/CommonCard.tscn" id="2_yoj64"]
+[ext_resource type="PackedScene" uid="uid://c2drv2qw066mg" path="res://Data/UI/Shop/RareCard.tscn" id="3_0ove6"]
+[ext_resource type="PackedScene" uid="uid://bwtu4i4kxachx" path="res://Data/UI/Shop/EpicCard.tscn" id="4_c6qty"]
+[ext_resource type="PackedScene" uid="uid://bovu1v2qt65ye" path="res://Data/UI/Shop/LegendaryCard.tscn" id="5_d6x5n"]
+
+[node name="ShopUI" type="CanvasLayer" unique_id=9714532]
+process_mode = 3
+layer = 4
+visible = false
+script = ExtResource("1_shop")
+common_card_scene = ExtResource("2_yoj64")
+rare_card_scene = ExtResource("3_0ove6")
+epic_card_scene = ExtResource("4_c6qty")
+legendary_card_scene = ExtResource("5_d6x5n")

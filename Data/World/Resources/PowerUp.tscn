@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://xduk3ix6qxt3"]
 
 [ext_resource type="Script" uid="uid://h0c6cyoqsrds" path="res://scripts/powerup_pickup.gd" id="1_0ocr6"]
-[ext_resource type="PackedScene" uid="uid://cpn0ship8hulm" path="res://scenes/Powerupbeam.tscn" id="2_coxm5"]
+[ext_resource type="PackedScene" uid="uid://cpn0ship8hulm" path="res://Data/World/Resources/Powerupbeam.tscn" id="2_coxm5"]
 [ext_resource type="AudioStream" uid="uid://dk5es2qiv70xp" path="res://assets/loot assets/PickupSound.mp3" id="3_coxm5"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_xno1n"]

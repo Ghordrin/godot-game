@@ -1,10 +1,10 @@
 [gd_scene format=3 uid="uid://c561h8v7o45e8"]
 
-[ext_resource type="Script" uid="uid://cbpllsg40qnij" path="res://scripts/EliteEnemy.gd" id="1"]
-[ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://scripts/health_component.gd" id="2"]
+[ext_resource type="Script" uid="uid://cbpllsg40qnij" path="res://Data/Enemies/Elite/EliteEnemy.gd" id="1"]
+[ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://components/HealthComponent.gd" id="2"]
 [ext_resource type="Texture2D" uid="uid://idtgo8xcbkc7" path="res://assets/enemies/Tiled_files/Slime3_Run_full.png" id="2_r852y"]
-[ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://scripts/status_effect_component.gd" id="3"]
-[ext_resource type="Script" uid="uid://byydxtjfad7ub" path="res://scripts/AffixComponent.gd" id="4"]
+[ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://components/StatusEffectComponent.gd" id="4_5t52h"]
+[ext_resource type="Script" uid="uid://byydxtjfad7ub" path="res://components/AffixComponent.gd" id="5_bfx67"]
 [ext_resource type="Texture2D" uid="uid://dww0ngawrf45e" path="res://assets/health/health_bar_under.png" id="6_715lh"]
 [ext_resource type="Script" uid="uid://c1a1irgpyt41k" path="res://scripts/world_health_bar.gd" id="6_pnhgq"]
 [ext_resource type="Texture2D" uid="uid://cnl75j7i1kn5u" path="res://assets/health/hp_bar.png" id="7_nctmk"]
@@ -100,10 +100,10 @@ script = ExtResource("2")
 max_health = 200
 
 [node name="StatusEffectComponent" type="Node" parent="." unique_id=125343372]
-script = ExtResource("3")
+script = ExtResource("4_5t52h")
 
 [node name="AffixComponent" type="Node" parent="." unique_id=998573415]
-script = ExtResource("4")
+script = ExtResource("5_bfx67")
 
 [node name="Hurtbox" type="Area2D" parent="." unique_id=1850540912 groups=["enemies"]]
 collision_layer = 2
@@ -112,7 +112,7 @@ collision_mask = 4
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=2056843741]
 shape = SubResource("2")
 
-[node name="WorldHealthBar" type="TextureProgressBar" parent="." unique_id=647804411 node_paths=PackedStringArray("health_component")]
+[node name="WorldHealthBar" type="TextureProgressBar" parent="." unique_id=647804411]
 offset_left = -13.0
 offset_top = -25.0
 offset_right = 51.0
@@ -122,5 +122,4 @@ texture_under = ExtResource("6_715lh")
 texture_over = ExtResource("7_nctmk")
 texture_progress = ExtResource("8_twmx3")
 script = ExtResource("6_pnhgq")
-health_component = NodePath("")
 metadata/_custom_type_script = "uid://c1a1irgpyt41k"

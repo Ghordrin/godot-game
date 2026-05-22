@@ -1,12 +1,12 @@
-[gd_scene format=3 uid="uid://b8krvu66hy0ce"]
+[gd_scene format=3 uid="uid://cb208k2oo1yx3"]
 
-[ext_resource type="Script" uid="uid://dymndys4t7dg6" path="res://scripts/the_brute_boss.gd" id="1_boss"]
-[ext_resource type="PackedScene" path="res://scenes/BossProjectile.tscn" id="2_3ioca"]
-[ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://scripts/health_component.gd" id="2_hcomp"]
+[ext_resource type="Script" uid="uid://bunh7eiuamla3" path="res://Data/Enemies/Boss/Phantom/PhantomBoss.gd" id="1_phantom"]
+[ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://components/HealthComponent.gd" id="2_hcomp"]
 [ext_resource type="Texture2D" uid="uid://b8b56158q0a4a" path="res://assets/enemies/Tiled_files/Slime1_Idle_full.png" id="3_sprite"]
-[ext_resource type="PackedScene" uid="uid://m5gvnpyrt5qo" path="res://scenes/GoldPickUp.tscn" id="5_gold"]
-[ext_resource type="PackedScene" uid="uid://xduk3ix6qxt3" path="res://scenes/PowerUp.tscn" id="6_powerup"]
-[ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://scripts/status_effect_component.gd" id="8_05uep"]
+[ext_resource type="PackedScene" uid="uid://m5gvnpyrt5qo" path="res://Data/UI/GoldPickUp.tscn" id="5_gold"]
+[ext_resource type="PackedScene" uid="uid://xduk3ix6qxt3" path="res://Data/World/Resources/PowerUp.tscn" id="6_powerup"]
+[ext_resource type="PackedScene" uid="uid://cem6b0jc6llrt" path="res://Data/Enemies/Boss/BossProjectile.tscn" id="7_bproj"]
+[ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://components/StatusEffectComponent.gd" id="7_pw8t2"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_1"]
 atlas = ExtResource("3_sprite")
@@ -32,7 +32,7 @@ region = Rect2(256, 0, 64, 64)
 atlas = ExtResource("3_sprite")
 region = Rect2(320, 0, 64, 64)
 
-[sub_resource type="SpriteFrames" id="SpriteFrames_boss"]
+[sub_resource type="SpriteFrames" id="SpriteFrames_phantom"]
 animations = [{
 "frames": [{
 "duration": 1.0,
@@ -55,44 +55,46 @@ animations = [{
 }],
 "loop": true,
 "name": &"idle",
-"speed": 4.0
+"speed": 5.0
 }]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_body"]
-radius = 14.0
+radius = 12.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_hurtbox"]
-radius = 18.0
+radius = 16.0
 
-[node name="BossEnemy" type="CharacterBody2D" unique_id=707726229]
-scale = Vector2(5.560003, 6.6799994)
+[node name="PhantomBoss" type="CharacterBody2D" unique_id=95768359]
+scale = Vector2(2.5, 2.5)
 collision_layer = 2
 collision_mask = 4
-script = ExtResource("1_boss")
-boss_projectile_scene = ExtResource("2_3ioca")
+script = ExtResource("1_phantom")
+salvo_count = 15
+salvo_speed = 400.0
+boss_projectile_scene = ExtResource("7_bproj")
 loot_item_scene = ExtResource("6_powerup")
 gold_pickup_scene = ExtResource("5_gold")
 
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2138521284]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1020210213]
+modulate = Color(0.6, 0.3, 0.9, 1)
 z_index = 2
 texture_filter = 1
-sprite_frames = SubResource("SpriteFrames_boss")
+sprite_frames = SubResource("SpriteFrames_phantom")
 animation = &"idle"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=480292610]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1604876095]
 shape = SubResource("CircleShape2D_body")
 
-[node name="HealthComponent" type="Node" parent="." unique_id=1042494153]
+[node name="HealthComponent" type="Node" parent="." unique_id=1875818676]
 script = ExtResource("2_hcomp")
-max_health = 300
 
-[node name="Hurtbox" type="Area2D" parent="." unique_id=597460718]
+[node name="Hurtbox" type="Area2D" parent="." unique_id=24395941]
 collision_layer = 2
 collision_mask = 0
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=1361086665]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=1708529089]
 shape = SubResource("CircleShape2D_hurtbox")
 
-[node name="StatusEffectComponent" type="Node" parent="." unique_id=787625115]
-script = ExtResource("8_05uep")
+[node name="StatusEffectComponent" type="Node" parent="." unique_id=566519013]
+script = ExtResource("7_pw8t2")
 metadata/_custom_type_script = "uid://dn6lad6evss5"

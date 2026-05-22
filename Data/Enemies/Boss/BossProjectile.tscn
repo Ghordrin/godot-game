@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://cem6b0jc6llrt"]
+
+[ext_resource type="Script" uid="uid://cvbccaadrnk4x" path="res://Data/Enemies/Boss/BossProjectile.gd" id="1_proj"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_proj"]
+radius = 4.0
+
+[node name="BossProjectile" type="Area2D" unique_id=676866104]
+collision_layer = 0
+script = ExtResource("1_proj")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=426828756]
+shape = SubResource("CircleShape2D_proj")

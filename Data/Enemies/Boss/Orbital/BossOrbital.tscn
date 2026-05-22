@@ -1,10 +1,10 @@
 [gd_scene format=3 uid="uid://hgtd3cbw048g"]
 
-[ext_resource type="Script" uid="uid://dg6gvm1v3v05i" path="res://scripts/BossOrbital.gd" id="1"]
-[ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://scripts/health_component.gd" id="2"]
+[ext_resource type="Script" uid="uid://dg6gvm1v3v05i" path="res://Data/Enemies/Boss/Orbital/BossOrbital.gd" id="1"]
+[ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://components/HealthComponent.gd" id="2"]
 [ext_resource type="Texture2D" uid="uid://bq5xema24bdtg" path="res://assets/enemies/Tiled_files/Slime3_Idle_body.png" id="2_xhgki"]
-[ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://scripts/status_effect_component.gd" id="3"]
-[ext_resource type="Script" uid="uid://fmajrrp4k7l1" path="res://scripts/armorcomponent.gd" id="4"]
+[ext_resource type="Script" uid="uid://fmajrrp4k7l1" path="res://components/ArmorComponent.gd" id="4"]
+[ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://components/StatusEffectComponent.gd" id="4_16w1o"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ke6yh"]
 atlas = ExtResource("2_xhgki")
@@ -54,7 +54,7 @@ shape = SubResource("1")
 script = ExtResource("2")
 
 [node name="StatusEffectComponent" type="Node" parent="." unique_id=1337579582]
-script = ExtResource("3")
+script = ExtResource("4_16w1o")
 
 [node name="ArmorComponent" type="Node" parent="." unique_id=855391944]
 script = ExtResource("4")

@@ -37,7 +37,7 @@ func _ready() -> void:
 	health_component.died.connect(_on_died)
 
 	## Spawn the dash cooldown indicator
-	var indicator_script = load("res://scripts/DashIndicator.gd")
+	var indicator_script = load("res://Data/DashIndicator.gd")
 	if indicator_script:
 		var indicator = indicator_script.new()
 		indicator.player = self
@@ -180,7 +180,7 @@ func cast_projectile(shoot_direction: Vector2) -> void:
 
 	var count: int     = max(1, stats.projectile_count)
 	var spread_angle   := deg_to_rad(12.0)
-	var proj_powerups  := PlayerInventory.get_active_projectile_powerups()
+	var proj_powerups: Array[PowerUpData] = PlayerInventory.get_active_projectile_powerups()
 
 	for i in count:
 		var direction := shoot_direction.normalized()
@@ -201,14 +201,18 @@ func cast_projectile(shoot_direction: Vector2) -> void:
 		projectile.setup(direction, stats.damage, stats.base_damage)
 
 		if proj_powerups.size() >= 1:
-			var rank := PlayerInventory.get_powerup_rank(proj_powerups[0])
-			projectile.apply_projectile_type(proj_powerups[0].projectile_type, rank)
-		else:
-			projectile.pierces_enemies = stats.projectile_pierce > 0
+			var rank: int = PlayerInventory.get_powerup_rank(proj_powerups[0])
+			projectile.apply_projectile_type(
+				proj_powerups[0].projectile_type,
+				rank
+			)
 
 		if proj_powerups.size() >= 2:
-			var rank := PlayerInventory.get_powerup_rank(proj_powerups[1])
-			projectile.apply_secondary_type(proj_powerups[1].projectile_type, rank)
+			var rank: int = PlayerInventory.get_powerup_rank(proj_powerups[1])
+			projectile.apply_secondary_type(
+				proj_powerups[1].projectile_type,
+				rank
+			)
 
 
 ## ── Death ─────────────────────────────────────────────────────────────
