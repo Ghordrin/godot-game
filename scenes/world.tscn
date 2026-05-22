@@ -42,15 +42,14 @@ countdown_seconds = 1
 enemy_scenes = Array[PackedScene]([ExtResource("5_4mrxx")])
 boss_scenes = Array[PackedScene]([ExtResource("6_i7141"), ExtResource("7_4mrxx"), ExtResource("9_q5onr")])
 elite_scenes = Array[PackedScene]([ExtResource("9_e3hyu")])
+waves_per_unlock = 10
 elite_base_chance = 0.1
-elite_max_affixes = 1
 spawn_radius = 400.0
 spawn_points = [NodePath("../SpawnLocations/SpawnNorth"), NodePath("../SpawnLocations/SpawnSouth")]
 base_enemy_count = 1
 max_enemy_count = 500
 health_scale = 0.5
-boss_interval = 1
-boss_health_mult = 1.2
+boss_health_mult = 1.1
 
 [node name="SpawnLocations" type="Node" parent="." unique_id=1532555716]
 

@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://components/HealthComponent.gd" id="2"]
 [ext_resource type="Texture2D" uid="uid://idtgo8xcbkc7" path="res://assets/enemies/Tiled_files/Slime3_Run_full.png" id="2_r852y"]
 [ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://components/StatusEffectComponent.gd" id="4_5t52h"]
-[ext_resource type="Script" uid="uid://byydxtjfad7ub" path="res://components/AffixComponent.gd" id="5_bfx67"]
+[ext_resource type="Script" uid="uid://byydxtjfad7ub" path="res://Data/Affixes/AffixComponent.gd" id="5_bfx67"]
 [ext_resource type="Texture2D" uid="uid://dww0ngawrf45e" path="res://assets/health/health_bar_under.png" id="6_715lh"]
 [ext_resource type="Script" uid="uid://c1a1irgpyt41k" path="res://scripts/world_health_bar.gd" id="6_pnhgq"]
 [ext_resource type="Texture2D" uid="uid://cnl75j7i1kn5u" path="res://assets/health/hp_bar.png" id="7_nctmk"]
@@ -85,7 +85,7 @@ height = 32.0
 [node name="EliteEnemy" type="CharacterBody2D" unique_id=893582295]
 scale = Vector2(3.4, 3.76)
 collision_layer = 4
-collision_mask = 3
+collision_mask = 2
 script = ExtResource("1")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1466028772]
@@ -97,7 +97,6 @@ shape = SubResource("1")
 
 [node name="HealthComponent" type="Node" parent="." unique_id=1020478915]
 script = ExtResource("2")
-max_health = 200
 
 [node name="StatusEffectComponent" type="Node" parent="." unique_id=125343372]
 script = ExtResource("4_5t52h")

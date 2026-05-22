@@ -3,15 +3,12 @@
 [ext_resource type="Texture2D" uid="uid://c6ei673hhf8us" path="res://assets/Powerups/img/epic_card.png" id="1_8s6ml"]
 [ext_resource type="Script" uid="uid://53132fbk83ve" path="res://Data/UI/Shop/CardResource.gd" id="2_nbm41"]
 
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_gy0j8"]
-texture = ExtResource("1_8s6ml")
-
 [node name="CommonCard" type="PanelContainer" unique_id=1010052009]
 custom_minimum_size = Vector2(280, 360)
 offset_right = 280.0
 offset_bottom = 410.0
-theme_override_styles/panel = SubResource("StyleBoxTexture_gy0j8")
 script = ExtResource("2_nbm41")
+card_texture = ExtResource("1_8s6ml")
 
 [node name="MarginContainer" type="MarginContainer" parent="." unique_id=154633897]
 layout_mode = 2

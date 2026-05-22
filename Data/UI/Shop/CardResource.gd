@@ -3,7 +3,18 @@ extends PanelContainer
 signal powerup_selected(powerup: PowerUpData)
 
 var _powerup: PowerUpData = null
+@export var card_texture: Texture2D
 
+
+#func _ready() -> void:
+	#if card_texture:
+		#var style := StyleBoxTexture.new()
+		#style.texture = card_texture
+		#style.content_margin_left = 30
+		#style.content_margin_top = 40
+		#style.content_margin_right = 30
+		#style.content_margin_bottom = 40
+		#add_theme_stylebox_override("panel", style)
 
 func populate(powerup: PowerUpData, current_rank: int) -> void:
 	_powerup = powerup

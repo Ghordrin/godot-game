@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="PowerUpData" format=3]
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://chqw67xgurb00"]
 
 [ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1_PowerUpData"]
 
@@ -7,10 +7,6 @@ script = ExtResource("1_PowerUpData")
 id = "arc_conductor"
 display_name = "Arc Conductor"
 description = "Projectiles deal electric damage, stun enemies, and chain to nearby targets. Chains increase with rank."
-icon = null
 rarity = 1
-max_stacks = 5
-stat_to_modify = ""
-modifier_type = 0
 amount = 1.0
 element_type = 3

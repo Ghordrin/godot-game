@@ -2,6 +2,8 @@
 .godot/
 .import/
 export_presets.cfg
+*.tmp
+*.uid
 
 # OS-specific ignores
 .DS_Store

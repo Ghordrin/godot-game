@@ -69,7 +69,9 @@ scale = Vector2(5.560003, 6.6799994)
 collision_layer = 2
 collision_mask = 4
 script = ExtResource("1_boss")
+stop_distance = 20.0
 boss_projectile_scene = ExtResource("2_3ioca")
+attack_range = 450.0
 loot_item_scene = ExtResource("6_powerup")
 gold_pickup_scene = ExtResource("5_gold")
 
@@ -84,7 +86,6 @@ shape = SubResource("CircleShape2D_body")
 
 [node name="HealthComponent" type="Node" parent="." unique_id=1042494153]
 script = ExtResource("2_hcomp")
-max_health = 300
 
 [node name="Hurtbox" type="Area2D" parent="." unique_id=597460718]
 collision_layer = 2
