@@ -19,6 +19,7 @@ config/features=PackedStringArray("4.6", "Forward Plus")
 AnimationHelper="*uid://dlqvldfhbnwms"
 PlayerInventory="*uid://c2sfawo1e6r3q"
 DamageMeter="*uid://cjhgktwh4v631"
+DamageNumberSpawner="*uid://bds8gbg4cd7cj"
 
 [display]
 

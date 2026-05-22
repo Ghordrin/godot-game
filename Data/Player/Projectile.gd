@@ -376,13 +376,15 @@ func _deal(enemy_root: Node, health_component: Node, amount: float, color: Color
 	if not _hit_tracker.has(id):
 		_hit_tracker[id] = {
 			"root": enemy_root,
+			"position": enemy_root.global_position,
 			"hits": []
 		}
 
-	_hit_tracker[id]["hits"].append({
-		"amount": amount,
-		"color": color
-	})
+		_hit_tracker[id]["hits"].append({
+			"amount": amount,
+			"color": color,
+			"type": damage_type
+		})
 
 	DamageMeter.record(amount, damage_type)
 
@@ -390,32 +392,25 @@ func _deal(enemy_root: Node, health_component: Node, amount: float, color: Color
 func _flush_damage_numbers() -> void:
 	for id in _hit_tracker:
 		var entry: Dictionary = _hit_tracker[id]
-		var root: Node = entry["root"]
+		var spawn_pos: Vector2 = entry.get("position", Vector2.ZERO)
 
-		if not is_instance_valid(root):
-			continue
-
-		var total: float = 0.0
-		var dominant_color: Color = DMG_PHYSICAL
-		var dominant_type: String = "physical"
-		var dominant_amount: float = 0.0
+		var index: int = 0
 
 		for hit: Dictionary in entry["hits"]:
-			total += float(hit.amount)
+			var amount: float = float(hit.amount)
+			var damage_type: String = String(hit.get("type", "physical"))
+			var color: Color = DamageVisuals.get_color(damage_type)
 
-			if float(hit.amount) > dominant_amount:
-				dominant_amount = float(hit.amount)
-				dominant_color = hit.color
-				dominant_type = String(hit.get("type", "physical"))
+			DamageNumberSpawner.spawn(
+				spawn_pos,
+				amount,
+				DamageVisuals.get_display_name(damage_type),
+				color,
+				index,
+				false
+			)
 
-		DamageNumber.spawn(
-			get_tree().current_scene,
-			root.global_position,
-			total,
-			dominant_color,
-			false,
-			DamageVisuals.get_display_name(dominant_type)
-		)
+			index += 1
 
 	_hit_tracker.clear()
 

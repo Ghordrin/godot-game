@@ -7,12 +7,21 @@ z_index = 6
 y_sort_enabled = true
 script = ExtResource("1_p3gxv")
 
-[node name="Label" type="Label" parent="." unique_id=1091122467]
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=962921690]
+custom_minimum_size = Vector2(120, 60)
+offset_left = -60.0
+offset_top = -40.0
+offset_right = 60.0
+offset_bottom = 20.0
+
+[node name="AmountLabel" type="Label" parent="VBoxContainer" unique_id=1091122467]
 z_index = 10
-offset_left = -67.0
-offset_top = -83.0
-offset_right = 22.0
-offset_bottom = -30.0
-scale = Vector2(1.5, 1.5)
+layout_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TypeLabel" type="Label" parent="VBoxContainer" unique_id=1861451272]
+z_index = 10
+layout_mode = 2
 horizontal_alignment = 1
 vertical_alignment = 1
