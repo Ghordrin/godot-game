@@ -69,11 +69,11 @@ func recalculate_stats() -> void:
 	crit_multiplier = base_crit_multiplier
 	
 	# Get all equipped powerups with their ranks from PlayerInventory
-	var equipped := PlayerInventory.get_equipped_powerups_with_ranks()
+	var equipped: Array = PlayerInventory.get_equipped_powerups_with_ranks()
 
 	# Collect modifiers by stat and type
 	# Structure: { "damage": { flat: 15.0, percentage: 2.5 }, ... }
-	var modifiers := {}
+	var modifiers: Dictionary = {}
 
 	# Process each equipped powerup
 	for entry in equipped:
@@ -86,7 +86,7 @@ func recalculate_stats() -> void:
 		if not modifiers.has(powerup.stat_to_modify):
 			modifiers[powerup.stat_to_modify] = { "flat": 0.0, "percentage": 0.0 }
 
-		var total_amount := powerup.amount * rank
+		var total_amount: float = powerup.amount * rank
 
 		if powerup.modifier_type == PowerUpData.ModifierType.FLAT:
 			modifiers[powerup.stat_to_modify].flat += total_amount
@@ -151,7 +151,7 @@ func recalculate_stats() -> void:
 # ══════════════════════════════════════════════════════════════════════
 
 func add_gold(amount: int) -> void:
-	var final_amount := int(round(amount * gold_multiplier))
+	var final_amount: int = int(round(amount * gold_multiplier))
 	gold += final_amount
 	PlayerInventory.add_gold(final_amount)
 
