@@ -315,41 +315,7 @@ func _refresh_breakdown_panel() -> void:
 	bvbox.add_theme_constant_override("separation", 4)
 	bm.add_child(bvbox)
 
-	var breakdown: Dictionary = DamageMeter.get_breakdown()
-	if breakdown.is_empty():
-		var empty_lbl := Label.new()
-		empty_lbl.text = "No damage yet"
-		empty_lbl.add_theme_font_size_override("font_size", 11)
-		empty_lbl.add_theme_color_override("font_color", COLOR_MUTED)
-		bvbox.add_child(empty_lbl)
-		return
 
-	for entry in breakdown:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		bvbox.add_child(row)
-
-		var dot := ColorRect.new()
-		dot.color = entry.color
-		dot.custom_minimum_size = Vector2(8, 8)
-		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(dot)
-
-		var type_lbl := Label.new()
-		type_lbl.text = entry.label
-		type_lbl.add_theme_font_size_override("font_size", 11)
-		type_lbl.add_theme_color_override("font_color", entry.color)
-		type_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(type_lbl)
-
-		var amt_lbl := Label.new()
-		amt_lbl.text = "%s (%.0f%%)" % [
-			DamageMeter._format_number(entry.amount),
-			entry.share * 100.0
-		]
-		amt_lbl.add_theme_font_size_override("font_size", 11)
-		amt_lbl.add_theme_color_override("font_color", COLOR_MUTED.lightened(0.3))
-		row.add_child(amt_lbl)
 
 # ══════════════════════════════════════════════════════════════════════
 # HELPERS

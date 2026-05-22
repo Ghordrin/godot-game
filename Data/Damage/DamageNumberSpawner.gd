@@ -1,6 +1,6 @@
 extends Node
 
-const DAMAGE_NUMBER_SCENE := preload("res://Data/UI/DamageNumber.tscn")
+const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://Data/UI/DamageNumber.tscn")
 
 
 func spawn(
@@ -11,15 +11,25 @@ func spawn(
 	index: int = 0,
 	is_dot: bool = false
 ) -> void:
-	var scene_root := get_tree().current_scene
+	if amount <= 0.0:
+		return
+
+	var scene_root: Node = get_tree().current_scene
 	if scene_root == null:
 		return
 
-	var dn := DAMAGE_NUMBER_SCENE.instantiate() as DamageNumber
-	scene_root.add_child(dn)
+	var damage_number := DAMAGE_NUMBER_SCENE.instantiate() as DamageNumber
+	if damage_number == null:
+		return
 
-	dn.global_position = world_pos + Vector2(0.0, -28.0 - float(index) * 34.0)
-	dn.setup(
+	scene_root.add_child(damage_number)
+
+	damage_number.global_position = world_pos + Vector2(
+		0.0,
+		-24.0 - float(index) * 36.0
+	)
+
+	damage_number.setup(
 		amount,
 		damage_type,
 		color,
