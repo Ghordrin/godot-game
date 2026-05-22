@@ -8,6 +8,7 @@ y_sort_enabled = true
 script = ExtResource("1_p3gxv")
 
 [node name="Label" type="Label" parent="." unique_id=1091122467]
+z_index = 10
 offset_left = -67.0
 offset_top = -83.0
 offset_right = 22.0

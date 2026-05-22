@@ -210,7 +210,8 @@ func _apply_damage_packet(enemy_root: Node, health_component: Node, packet: Dama
 
 		_hit_tracker[id]["hits"].append({
 			"amount": amount,
-			"color": color
+			"color": color,
+			"type": damage_type
 		})
 
 		DamageMeter.record(amount, damage_type)
@@ -396,6 +397,7 @@ func _flush_damage_numbers() -> void:
 
 		var total: float = 0.0
 		var dominant_color: Color = DMG_PHYSICAL
+		var dominant_type: String = "physical"
 		var dominant_amount: float = 0.0
 
 		for hit: Dictionary in entry["hits"]:
@@ -404,15 +406,9 @@ func _flush_damage_numbers() -> void:
 			if float(hit.amount) > dominant_amount:
 				dominant_amount = float(hit.amount)
 				dominant_color = hit.color
+				dominant_type = String(hit.get("type", "physical"))
 
-		var dominant_type: String = "physical"
-
-		for hit: Dictionary in entry["hits"]:
-			if hit.color == dominant_color:
-				dominant_type = _color_to_type(dominant_color)
-				break
-
-				DamageNumber.spawn(
+		DamageNumber.spawn(
 			get_tree().current_scene,
 			root.global_position,
 			total,
