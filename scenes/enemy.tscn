@@ -10,7 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://jk2i6jkyioqr" path="res://assets/health/health_bar_over.png" id="5_8qclf"]
 [ext_resource type="PackedScene" uid="uid://m5gvnpyrt5qo" path="res://scenes/GoldPickUp.tscn" id="6_otmr2"]
 [ext_resource type="Script" uid="uid://c1a1irgpyt41k" path="res://scripts/world_health_bar.gd" id="6_w8i8w"]
-[ext_resource type="PackedScene" uid="uid://by4o8pk82m12k" path="res://scenes/DamageNumber.tscn" id="10_j0cyh"]
+[ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://scripts/status_effect_component.gd" id="13_wtq4b"]
 [ext_resource type="Script" uid="uid://c7g1ssiarnys1" path="res://scripts/enemy_debug_label.gd" id="15_g0wcc"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_otmr2"]
@@ -67,7 +67,7 @@ animations = [{
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_md484"]
 
-[node name="Enemy" type="CharacterBody2D" unique_id=21646246]
+[node name="Enemy" type="CharacterBody2D" unique_id=21646246 groups=["enemies"]]
 scale = Vector2(2, 2)
 collision_layer = 2
 collision_mask = 4
@@ -89,8 +89,7 @@ shape = SubResource("CircleShape2D_xwavj")
 
 [node name="HealthComponent" type="Node" parent="." unique_id=1783262276]
 script = ExtResource("2_nenq2")
-max_health = 30
-damage_number_scene = ExtResource("10_j0cyh")
+max_health = 10
 metadata/_custom_type_script = "uid://6dttfeskycuk"
 
 [node name="WorldHealthBar" type="TextureProgressBar" parent="." unique_id=1296486400 node_paths=PackedStringArray("health_component")]
@@ -117,3 +116,7 @@ shape = SubResource("CircleShape2D_md484")
 offset_right = 40.0
 offset_bottom = 23.0
 script = ExtResource("15_g0wcc")
+
+[node name="StatusEffectComponent" type="Node" parent="." unique_id=1318317081]
+script = ExtResource("13_wtq4b")
+metadata/_custom_type_script = "uid://dn6lad6evss5"

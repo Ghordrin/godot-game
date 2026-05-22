@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="PowerUpData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://cqrhl56wauhh3"]
 
-[ext_resource type="Script" path="res://scripts/powerup_data.gd" id="1"]
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
@@ -8,9 +8,7 @@ id = "precision_lens"
 display_name = "Precision Lens"
 description = "Calibrated targeting optic. Improves critical hit probability."
 rarity = 1
-stat_to_modify = "crit_chance"
-modifier_type = 0
-amount = 0.08
 max_stacks = 4
-is_temporary = false
-duration = 0.0
+stat_to_modify = "crit_chance"
+modifier_type = 1
+amount = 10.0

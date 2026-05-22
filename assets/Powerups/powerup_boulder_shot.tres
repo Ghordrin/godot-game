@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://dxqnl5j238qvm"]
+
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1_PowerUpData"]
+
+[resource]
+script = ExtResource("1_PowerUpData")
+id = "boulder_shot"
+display_name = "Boulder Shot"
+description = "Fires a massive slow projectile that crushes through all enemies. Each rank increases size and damage."
+rarity = 2
+max_stacks = 1
+projectile_type = 2

@@ -44,7 +44,7 @@ func _build_textures() -> void:
 	var core_tex := GradientTexture2D.new()
 	core_tex.gradient = core_g
 	core_tex.width    = 32
-	core_tex.height   = 160
+	core_tex.height   = 400
 	core_beam.texture = core_tex
 	core_beam.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	core_beam.position = Vector2(0, -80)
@@ -56,7 +56,7 @@ func _build_textures() -> void:
 	var glow_tex := GradientTexture2D.new()
 	glow_tex.gradient = glow_g
 	glow_tex.width    = 28
-	glow_tex.height   = 160
+	glow_tex.height   = 400
 	outer_glow.texture = glow_tex
 	outer_glow.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	outer_glow.position = Vector2(0, -80)
@@ -86,8 +86,8 @@ func _build_textures() -> void:
 	ring_tex.fill      = GradientTexture2D.FILL_RADIAL
 	ring_tex.fill_from = Vector2(0.5, 0.5)
 	ring_tex.fill_to   = Vector2(1.0, 0.5)
-	ring_tex.width     = 128
-	ring_tex.height    = 128
+	ring_tex.width     = 64
+	ring_tex.height    = 64
 	pulse_ring.texture = ring_tex
 	pulse_ring.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	pulse_ring.position = Vector2(0, 8)

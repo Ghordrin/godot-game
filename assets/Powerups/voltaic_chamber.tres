@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="PowerUpData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://djsaiq6gjjh0t"]
 
-[ext_resource type="Script" path="res://scripts/powerup_data.gd" id="1"]
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
@@ -8,9 +8,8 @@ id = "voltaic_chamber"
 display_name = "Voltaic Chamber"
 description = "Overclocked firing mechanism. Significantly increases attack speed."
 rarity = 1
+max_stacks = 3
 stat_to_modify = "attack_speed"
 modifier_type = 1
-amount = 1.2
-max_stacks = 3
-is_temporary = false
-duration = 0.0
+amount = 20.0
+element_type = 3

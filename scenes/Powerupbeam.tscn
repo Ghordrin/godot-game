@@ -2,6 +2,27 @@
 
 [ext_resource type="Script" uid="uid://cjfb1mrl5sk22" path="res://scripts/PowerupBeam.gd" id="1_beam"]
 
+[sub_resource type="FontFile" id="FontFile_xujjd"]
+cache/0/variation_coordinates = {}
+cache/0/face_index = 0
+cache/0/embolden = 0.0
+cache/0/transform = Transform2D(1, 0, 0, 1, 0, 0)
+cache/0/spacing_top = 0
+cache/0/spacing_bottom = 0
+cache/0/spacing_space = 0
+cache/0/spacing_glyph = 0
+cache/0/baseline_offset = 0.0
+cache/0/16/0/ascent = 0.0
+cache/0/16/0/descent = 0.0
+cache/0/16/0/underline_position = 0.0
+cache/0/16/0/underline_thickness = 0.0
+cache/0/16/0/scale = 1.0
+cache/0/30/0/ascent = 0.0
+cache/0/30/0/descent = 0.0
+cache/0/30/0/underline_position = 0.0
+cache/0/30/0/underline_thickness = 0.0
+cache/0/30/0/scale = 1.0
+
 [node name="LootBeam" type="Node2D" unique_id=39705028]
 z_index = 2
 y_sort_enabled = true
@@ -38,5 +59,7 @@ offset_left = -59.0
 offset_top = -110.0
 offset_right = 61.0
 offset_bottom = -87.0
+theme_override_fonts/font = SubResource("FontFile_xujjd")
+theme_override_font_sizes/font_size = 30
 horizontal_alignment = 1
 vertical_alignment = 1

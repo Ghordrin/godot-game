@@ -1,16 +1,12 @@
-[gd_resource type="Resource" script_class="PowerUpData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://dojpccjkdoe1u"]
 
-[ext_resource type="Script" path="res://scripts/powerup_data.gd" id="1"]
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
 id = "kinetic_drift"
 display_name = "Kinetic Drift"
 description = "Neural-linked motion enhancer. Boosts movement velocity."
-rarity = 0
-stat_to_modify = "move_speed"
-modifier_type = 1
-amount = 1.12
 max_stacks = 3
-is_temporary = false
-duration = 0.0
+stat_to_modify = "move_speed"
+amount = 1.12

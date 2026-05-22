@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://b303pfo3nlrhn"]
+
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1_PowerUpData"]
+
+[resource]
+script = ExtResource("1_PowerUpData")
+id = "cryo_lens"
+display_name = "Cryo Lens"
+description = "Projectiles deal cold damage and slow enemies on hit. Combines with other elements for powerful effects."
+rarity = 1
+amount = 1.0
+element_type = 2

@@ -1,12 +1,12 @@
 [gd_scene format=3 uid="uid://b8krvu66hy0ce"]
 
-[ext_resource type="Script" uid="uid://dymndys4t7dg6" path="res://scripts/boss_enemy.gd" id="1_boss"]
+[ext_resource type="Script" uid="uid://dymndys4t7dg6" path="res://scripts/the_brute_boss.gd" id="1_boss"]
 [ext_resource type="PackedScene" path="res://scenes/BossProjectile.tscn" id="2_3ioca"]
 [ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://scripts/health_component.gd" id="2_hcomp"]
 [ext_resource type="Texture2D" uid="uid://b8b56158q0a4a" path="res://assets/enemies/Tiled_files/Slime1_Idle_full.png" id="3_sprite"]
-[ext_resource type="PackedScene" uid="uid://by4o8pk82m12k" path="res://scenes/DamageNumber.tscn" id="4_dmgnum"]
 [ext_resource type="PackedScene" uid="uid://m5gvnpyrt5qo" path="res://scenes/GoldPickUp.tscn" id="5_gold"]
 [ext_resource type="PackedScene" uid="uid://xduk3ix6qxt3" path="res://scenes/PowerUp.tscn" id="6_powerup"]
+[ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://scripts/status_effect_component.gd" id="8_05uep"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_1"]
 atlas = ExtResource("3_sprite")
@@ -85,7 +85,6 @@ shape = SubResource("CircleShape2D_body")
 [node name="HealthComponent" type="Node" parent="." unique_id=1042494153]
 script = ExtResource("2_hcomp")
 max_health = 300
-damage_number_scene = ExtResource("4_dmgnum")
 
 [node name="Hurtbox" type="Area2D" parent="." unique_id=597460718]
 collision_layer = 2
@@ -93,3 +92,7 @@ collision_mask = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=1361086665]
 shape = SubResource("CircleShape2D_hurtbox")
+
+[node name="StatusEffectComponent" type="Node" parent="." unique_id=787625115]
+script = ExtResource("8_05uep")
+metadata/_custom_type_script = "uid://dn6lad6evss5"

@@ -1,11 +1,16 @@
 extends Area2D
 class_name PowerUpPickup
 
-## A pickup that adds a powerup to the player's inventory instead of
-## applying it immediately. The powerup becomes active only when the
-## player equips it in the shop.
+## A pickup that can behave in two different ways depending on context:
+## - If is_wave_temporary = false: adds powerup to inventory (permanent, shop-style)
+## - If is_wave_temporary = true: applies powerup immediately, expires at wave end
 
 @export var powerup_data: PowerUpData
+
+## When true, this powerup applies immediately and expires when the wave ends.
+## When false, this powerup goes into the inventory for later equipping.
+## Enemies should set this to true when dropping powerups during combat.
+@export var is_wave_temporary: bool = false
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var beam: LootBeam = $PowerupBeam
@@ -22,11 +27,17 @@ func _ready() -> void:
 	await pickup_sound.finished
 
 func _on_body_entered(body: Node2D) -> void:
-	# The player has picked up this powerup.
-	# Instead of immediately applying it, add it to the inventory.
-	# The player will equip it later in the shop if they want to use it.
 	if body.is_in_group("player"):
-		PlayerInventory.collect_powerup(powerup_data)
+		if is_wave_temporary:
+			# This is a combat drop - apply it immediately as a temporary buff.
+			# It will be cleared when the wave ends.
+			PlayerInventory.apply_wave_temporary_powerup(powerup_data)
+		else:
+			# This is a permanent pickup (from shop or special event).
+			# Add it to the inventory so the player can equip it later.
+			PlayerInventory.collect_powerup(powerup_data)
+		
+		# Clean up the visual pickup regardless of which path we took.
 		sprite.visible = false
 		beam.visible = false
 		set_deferred("monitoring", false)

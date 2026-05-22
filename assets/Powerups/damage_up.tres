@@ -1,10 +1,13 @@
 [gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://uqvigd0jyngq"]
 
-[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/powerup_data.gd" id="1_e7vyu"]
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1_e7vyu"]
 
 [resource]
 script = ExtResource("1_e7vyu")
+id = "damge_up"
+display_name = "Damage"
 description = "Increases the damage"
+stat_to_modify = "damage"
 modifier_type = 1
 amount = 1.5
 metadata/_custom_type_script = "uid://c6rwp657h3iie"

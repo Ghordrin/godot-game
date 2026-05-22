@@ -1,0 +1,126 @@
+[gd_scene format=3 uid="uid://c561h8v7o45e8"]
+
+[ext_resource type="Script" uid="uid://cbpllsg40qnij" path="res://scripts/EliteEnemy.gd" id="1"]
+[ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://scripts/health_component.gd" id="2"]
+[ext_resource type="Texture2D" uid="uid://idtgo8xcbkc7" path="res://assets/enemies/Tiled_files/Slime3_Run_full.png" id="2_r852y"]
+[ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://scripts/status_effect_component.gd" id="3"]
+[ext_resource type="Script" uid="uid://byydxtjfad7ub" path="res://scripts/AffixComponent.gd" id="4"]
+[ext_resource type="Texture2D" uid="uid://dww0ngawrf45e" path="res://assets/health/health_bar_under.png" id="6_715lh"]
+[ext_resource type="Script" uid="uid://c1a1irgpyt41k" path="res://scripts/world_health_bar.gd" id="6_pnhgq"]
+[ext_resource type="Texture2D" uid="uid://cnl75j7i1kn5u" path="res://assets/health/hp_bar.png" id="7_nctmk"]
+[ext_resource type="Texture2D" uid="uid://jk2i6jkyioqr" path="res://assets/health/health_bar_over.png" id="8_twmx3"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_285ob"]
+atlas = ExtResource("2_r852y")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_2r52m"]
+atlas = ExtResource("2_r852y")
+region = Rect2(64, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_i01nc"]
+atlas = ExtResource("2_r852y")
+region = Rect2(128, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_43sgy"]
+atlas = ExtResource("2_r852y")
+region = Rect2(192, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_i2ocq"]
+atlas = ExtResource("2_r852y")
+region = Rect2(256, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gwe43"]
+atlas = ExtResource("2_r852y")
+region = Rect2(320, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_puin4"]
+atlas = ExtResource("2_r852y")
+region = Rect2(384, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tc1xx"]
+atlas = ExtResource("2_r852y")
+region = Rect2(448, 0, 64, 64)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_aqxnd"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_285ob")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_2r52m")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_i01nc")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_43sgy")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_i2ocq")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gwe43")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_puin4")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tc1xx")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[sub_resource type="CapsuleShape2D" id="1"]
+radius = 14.0
+height = 28.0
+
+[sub_resource type="CapsuleShape2D" id="2"]
+radius = 16.0
+height = 32.0
+
+[node name="EliteEnemy" type="CharacterBody2D" unique_id=893582295]
+scale = Vector2(3.4, 3.76)
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1466028772]
+texture_filter = 1
+sprite_frames = SubResource("SpriteFrames_aqxnd")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=72563858]
+shape = SubResource("1")
+
+[node name="HealthComponent" type="Node" parent="." unique_id=1020478915]
+script = ExtResource("2")
+max_health = 200
+
+[node name="StatusEffectComponent" type="Node" parent="." unique_id=125343372]
+script = ExtResource("3")
+
+[node name="AffixComponent" type="Node" parent="." unique_id=998573415]
+script = ExtResource("4")
+
+[node name="Hurtbox" type="Area2D" parent="." unique_id=1850540912 groups=["enemies"]]
+collision_layer = 2
+collision_mask = 4
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=2056843741]
+shape = SubResource("2")
+
+[node name="WorldHealthBar" type="TextureProgressBar" parent="." unique_id=647804411 node_paths=PackedStringArray("health_component")]
+offset_left = -13.0
+offset_top = -25.0
+offset_right = 51.0
+offset_bottom = 39.0
+scale = Vector2(0.38622212, 0.32986537)
+texture_under = ExtResource("6_715lh")
+texture_over = ExtResource("7_nctmk")
+texture_progress = ExtResource("8_twmx3")
+script = ExtResource("6_pnhgq")
+health_component = NodePath("")
+metadata/_custom_type_script = "uid://c1a1irgpyt41k"

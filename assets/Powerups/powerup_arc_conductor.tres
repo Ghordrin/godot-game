@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PowerUpData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/PowerUpData.gd" id="1_PowerUpData"]
+
+[resource]
+script = ExtResource("1_PowerUpData")
+id = "arc_conductor"
+display_name = "Arc Conductor"
+description = "Projectiles deal electric damage, stun enemies, and chain to nearby targets. Chains increase with rank."
+icon = null
+rarity = 1
+max_stacks = 5
+stat_to_modify = ""
+modifier_type = 0
+amount = 1.0
+element_type = 3

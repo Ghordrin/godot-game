@@ -16,7 +16,7 @@ extends CharacterBody2D
 
 
 ## Base chance (0.0 to 1.0) that this enemy drops a powerup at all.
-@export var drop_chance: float = 0.15  # 15% chance
+@export var drop_chance: float = 0.015  # 15% chance
 
 var target: Node2D = null
 var last_direction: Vector2 = Vector2.DOWN
@@ -93,9 +93,19 @@ func drop_loot() -> void:
 		push_warning("loot_item_scene root is not a PowerUpPickup.")
 		return
 
+	# Assign the powerup data to the pickup.
 	powerup_pickup.powerup_data = drop
+	
+	# CRITICAL: Mark this as a wave-temporary powerup.
+	# This tells the PowerUpPickup that when the player collects it,
+	# it should apply immediately as a temporary buff that expires
+	# when the wave ends, rather than adding it to the inventory.
+	powerup_pickup.is_wave_temporary = true
+	
+	# Spawn the pickup at the enemy's death position.
 	powerup_pickup.global_position = global_position
 	get_tree().current_scene.add_child(powerup_pickup)
+
 
 func follow_target() -> void:
 	var direction: Vector2 = global_position.direction_to(target.global_position)

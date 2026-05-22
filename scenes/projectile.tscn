@@ -81,6 +81,10 @@ z_index = 20
 collision_layer = 8
 collision_mask = 2
 script = ExtResource("1_q3m7n")
+speed = null
+damage = null
+lifetime = null
+animation_name = null
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=434581898]
 z_index = 2

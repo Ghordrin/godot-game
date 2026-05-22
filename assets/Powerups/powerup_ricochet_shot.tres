@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://e5novowbpj50"]
+
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1_PowerUpData"]
+
+[resource]
+script = ExtResource("1_PowerUpData")
+id = "ricochet_shot"
+display_name = "Ricochet Shot"
+description = "Projectiles bounce off walls and terrain. Each rank adds one additional bounce."
+rarity = 2
+max_stacks = 1
+projectile_type = 3
