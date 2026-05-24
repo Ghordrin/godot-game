@@ -3,7 +3,6 @@
 [ext_resource type="Texture2D" uid="uid://cev3jqon6dqwa" path="res://assets/Character0/Character0_Idle.png" id="1_3vyb7"]
 [ext_resource type="Script" uid="uid://cxnp5nyv8bc6v" path="res://Data/Player/Player.gd" id="1_g2els"]
 [ext_resource type="PackedScene" uid="uid://s5dfuo3q8qlx" path="res://Data/World/Resources/projectile.tscn" id="2_d2wvv"]
-[ext_resource type="Texture2D" uid="uid://bxysx1npus342" path="res://assets/dark.png" id="3_e5wor"]
 [ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://components/HealthComponent.gd" id="3_qhqgy"]
 [ext_resource type="Texture2D" uid="uid://ckg5a2sdnbi3q" path="res://assets/Character0/Character0_Walk.png" id="3_smehm"]
 [ext_resource type="Texture2D" uid="uid://dww0ngawrf45e" path="res://assets/health/health_bar_under.png" id="4_fjrip"]
@@ -13,9 +12,29 @@
 [ext_resource type="Texture2D" uid="uid://jk2i6jkyioqr" path="res://assets/health/health_bar_over.png" id="6_smehm"]
 [ext_resource type="Script" uid="uid://gqpea30jlvkp" path="res://components/StatsComponent.gd" id="10_y4r1p"]
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_2es7p"]
+atlas = ExtResource("3_smehm")
+region = Rect2(0, 0, 460, 460)
+
 [sub_resource type="AtlasTexture" id="AtlasTexture_tuul6"]
-atlas = ExtResource("3_e5wor")
-region = Rect2(16, 16, 16, 16)
+atlas = ExtResource("3_smehm")
+region = Rect2(460, 0, 460, 460)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8mrtr"]
+atlas = ExtResource("3_smehm")
+region = Rect2(920, 0, 460, 460)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b3cwg"]
+atlas = ExtResource("3_smehm")
+region = Rect2(1380, 0, 460, 460)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dk4bn"]
+atlas = ExtResource("3_smehm")
+region = Rect2(1840, 0, 460, 460)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3nxmj"]
+atlas = ExtResource("3_smehm")
+region = Rect2(2300, 0, 460, 460)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_md1ol"]
 atlas = ExtResource("1_3vyb7")
@@ -149,7 +168,22 @@ region = Rect2(2300, 1840, 460, 460)
 animations = [{
 "frames": [{
 "duration": 1.0,
+"texture": SubResource("AtlasTexture_2es7p")
+}, {
+"duration": 1.0,
 "texture": SubResource("AtlasTexture_tuul6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8mrtr")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b3cwg")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dk4bn")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3nxmj")
 }],
 "loop": true,
 "name": &"idle_down",
