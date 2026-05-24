@@ -19,6 +19,31 @@ var _pressure_timer: float     = 0.0
 ## Tracks how many Corrosive stacks have been applied.
 var _strip_stacks: int = 0
 
+## Compatibility property — AffixComponent sets armor_value by name.
+var armor_value: float:
+	get: return base_armor
+	set(v):
+		base_armor = v
+		current_armor = v
+
+## Compatibility shim — DamageMitigation calls reduce(amount, damage_type).
+## Routes fire through erosion, everything else through flat absorption.
+func reduce(incoming: float, damage_type: String = "physical") -> float:
+	if damage_type == "fire" and not is_broken:
+		var erosion: float = incoming * 0.5
+		current_armor = maxf(0.0, current_armor - erosion)
+		if current_armor <= 0.0:
+			is_broken = true
+	return absorb(incoming)
+
+## Called by Corrosive combo — strips armor without dealing health damage.
+func erode(amount: float) -> void:
+	if is_broken:
+		return
+	current_armor = maxf(0.0, current_armor - amount)
+
+var is_broken: bool = false
+
 
 func _ready() -> void:
 	current_armor = base_armor
@@ -57,3 +82,5 @@ func get_effective_armor() -> float:
 
 func _get_effective_armor() -> float:
 	return maxf(0.0, current_armor - _pressure_reduction)
+	
+	

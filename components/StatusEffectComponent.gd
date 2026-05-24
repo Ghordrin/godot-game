@@ -481,3 +481,113 @@ func _kill_pulse_tween() -> void:
 		_pulse_tween.kill()
 
 	_pulse_tween = null
+	
+# ── Combo reactions ────────────────────────────────────────────────────
+
+## Entry point called by Projectile for all combo damage type strings.
+func apply_combo_effect(damage_type: String, amount: float) -> void:
+	match damage_type:
+		"thermal":    apply_thermal(amount)
+		"plasma":     apply_plasma(amount)
+		"corrosive":  apply_corrosive(amount)
+		"magnetic":   apply_magnetic(amount)
+		"viral":      apply_crystallize(amount * 1.5, 3.0)
+		"neurotoxin": apply_contagion(amount, 1.5, 8.0)
+
+
+## THERMAL — burn DOT + temporary armor softening
+func apply_thermal(base_damage: float) -> void:
+	apply_burn(base_damage * 0.35, 4.0, 0.5)
+	var armor: ArmorComponent = get_parent().get_node_or_null("ArmorComponent") as ArmorComponent
+	if is_instance_valid(armor):
+		armor.erode(armor.current_armor * 0.20)
+	_spawn_combo_visual(Color(1.0, 0.50, 0.12), 60.0)
+
+
+## PLASMA — AOE burst to nearby enemies
+func apply_plasma(base_damage: float) -> void:
+	const PLASMA_RADIUS: float = 90.0
+	_spawn_combo_visual(Color(0.9, 0.20, 1.0), PLASMA_RADIUS)
+	if _parent == null:
+		return
+	for enemy: Node in get_tree().get_nodes_in_group("enemies"):
+		if enemy == _parent or not is_instance_valid(enemy):
+			continue
+		var enemy_2d: Node2D = enemy as Node2D
+		if enemy_2d == null:
+			continue
+		var dist: float = _parent.global_position.distance_to(enemy_2d.global_position)
+		if dist > PLASMA_RADIUS:
+			continue
+		var falloff: float      = 1.0 - (dist / PLASMA_RADIUS) * 0.55
+		var hc: HealthComponent = enemy.get_node_or_null("HealthComponent") as HealthComponent
+		if is_instance_valid(hc):
+			hc.take_damage(base_damage * falloff * 0.6, "combo")
+
+
+## CORROSIVE — armor strip + weak poison DOT
+func apply_corrosive(base_damage: float) -> void:
+	var armor: ArmorComponent = get_parent().get_node_or_null("ArmorComponent") as ArmorComponent
+	if is_instance_valid(armor):
+		armor.erode(armor.current_armor * 0.15)
+	apply_poison(base_damage * 0.15, 3.0, 0.75)
+	_spawn_combo_visual(Color(0.60, 1.0, 0.08), 50.0)
+
+
+## MAGNETIC — direct shield damage; slows if no shield present
+func apply_magnetic(base_damage: float) -> void:
+	var shield: ShieldComponent = get_parent().get_node_or_null("ShieldComponent") as ShieldComponent
+	if is_instance_valid(shield):
+		shield.absorb(base_damage * 2.0)
+	else:
+		apply_slow(0.30, 1.5)
+	_spawn_combo_visual(Color(0.20, 0.80, 1.0), 55.0)
+
+
+func _spawn_combo_visual(color: Color, radius: float) -> void:
+	if _parent == null or not _parent.is_inside_tree():
+		return
+	var ring: ComboRing = ComboRing.new()
+	ring.ring_color = color
+	ring.max_radius = radius
+	ring.global_position = _parent.global_position
+	get_tree().current_scene.add_child(ring)
+
+
+## Self-drawing expanding ring — no scene file, no textures.
+class _ComboRing extends Node2D:
+	var ring_color: Color = Color.WHITE
+	var max_radius: float = 64.0
+	var _radius: float    = 0.0
+	var _alpha: float     = 0.85
+
+	func _ready() -> void:
+		z_index = 12
+		var tw: Tween = create_tween().set_parallel(true)
+		tw.tween_method(
+			func(r: float) -> void: _radius = r; queue_redraw(),
+			0.0, max_radius, 0.35
+		)
+		tw.tween_method(
+			func(a: float) -> void: _alpha = a; queue_redraw(),
+			0.85, 0.0, 0.35
+		)
+		tw.chain().tween_callback(queue_free)
+
+	func _draw() -> void:
+		if _radius <= 0.0:
+			return
+		draw_circle(
+			Vector2.ZERO, _radius,
+			Color(ring_color.r, ring_color.g, ring_color.b, _alpha * 0.12)
+		)
+		draw_arc(
+			Vector2.ZERO, _radius, 0.0, TAU, 48,
+			Color(ring_color.r, ring_color.g, ring_color.b, _alpha),
+			3.5
+		)
+		draw_arc(
+			Vector2.ZERO, _radius * 0.5, 0.0, TAU, 32,
+			Color(ring_color.r, ring_color.g, ring_color.b, _alpha * 0.5),
+			1.5
+		)
