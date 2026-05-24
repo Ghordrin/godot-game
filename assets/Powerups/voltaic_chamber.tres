@@ -11,5 +11,4 @@ rarity = 1
 max_stacks = 3
 stat_to_modify = "attack_speed"
 modifier_type = 1
-amount = 20.0
-element_type = 3
+amount = 0.15

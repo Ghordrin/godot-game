@@ -16,14 +16,16 @@ func _ready() -> void:
 		push_warning("WorldHealthBar could not find a HealthComponent.")
 		return
 
-	health_component.health_changed.connect(_on_health_changed)
-	health_component.died.connect(_on_died)
+	if not health_component.health_changed.is_connected(_on_health_changed):
+		health_component.health_changed.connect(_on_health_changed)
 
-	min_value = 0
-	max_value = health_component.max_health
-	value = health_component.current_health
+	if not health_component.died.is_connected(_on_died):
+		health_component.died.connect(_on_died)
 
-	_update_visibility()
+	_refresh()
+
+	await get_tree().process_frame
+	_refresh()
 
 
 func _on_health_changed(current_health: int, max_health: int) -> void:
@@ -37,8 +39,24 @@ func _on_died() -> void:
 		hide()
 
 
+func _refresh() -> void:
+	if health_component == null:
+		return
+
+	min_value = 0
+	max_value = health_component.max_health
+	value = health_component.current_health
+
+	_update_visibility()
+
+
 func _update_visibility() -> void:
+	if hide_when_dead and value <= 0:
+		hide()
+		return
+
 	if hide_when_full and value >= max_value:
 		hide()
-	else:
-		show()
+		return
+
+	show()

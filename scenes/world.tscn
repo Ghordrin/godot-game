@@ -33,23 +33,15 @@ shader_parameter/vignette_radius = 0.786000037335
 [node name="Player" parent="." unique_id=976265754 instance=ExtResource("2_71j4m")]
 position = Vector2(644, 41)
 
-[node name="WaveManager" type="Node" parent="." unique_id=1763136326 node_paths=PackedStringArray("spawn_points") groups=["wave_manager"]]
+[node name="WaveManager" type="Node" parent="." unique_id=1763136326 groups=["wave_manager"]]
 script = ExtResource("4_i7141")
 shop_interval = 1
 shop_scene = ExtResource("10_w7kh3")
 loot_table = ExtResource("5_e3hyu")
-countdown_seconds = 1
 enemy_scenes = Array[PackedScene]([ExtResource("5_4mrxx")])
 boss_scenes = Array[PackedScene]([ExtResource("6_i7141"), ExtResource("7_4mrxx"), ExtResource("9_q5onr")])
 elite_scenes = Array[PackedScene]([ExtResource("9_e3hyu")])
-waves_per_unlock = 10
-elite_base_chance = 0.1
-spawn_radius = 400.0
-spawn_points = [NodePath("../SpawnLocations/SpawnNorth"), NodePath("../SpawnLocations/SpawnSouth")]
-base_enemy_count = 1
-max_enemy_count = 500
-health_scale = 0.5
-boss_health_mult = 1.1
+boss_health_mult = 1.3
 
 [node name="SpawnLocations" type="Node" parent="." unique_id=1532555716]
 

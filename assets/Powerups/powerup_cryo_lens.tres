@@ -8,5 +8,6 @@ id = "cryo_lens"
 display_name = "Cryo Lens"
 description = "Projectiles deal cold damage and slow enemies on hit. Combines with other elements for powerful effects."
 rarity = 1
-amount = 1.0
+modifier_type = 1
+amount = 0.3
 element_type = 2

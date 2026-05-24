@@ -9,4 +9,4 @@ display_name = "Impact Coil"
 description = "Reinforced kinetic amplifier. Increases base damage output."
 stat_to_modify = "damage"
 modifier_type = 1
-amount = 20.0
+amount = 0.1

@@ -3,21 +3,14 @@ class_name DamageBuilder
 
 const ComboLib := preload("res://Data/Damage/ElementComboLibrary.gd")
 
-const BASE_WAVE_ELEMENT_CAP: float = 0.80
-const MID_WAVE_ELEMENT_CAP: float = 1.20
-const LATE_WAVE_ELEMENT_CAP: float = 1.75
-const ELEMENT_WAVE_SCALE_PER_WAVE: float = 0.12
-
 
 static func build_projectile_packet(base_damage: float, equipped_powerups: Array, current_wave: int) -> DamagePacket:
 	var packet := DamagePacket.new()
-	var safe_wave: int = max(1, current_wave)
-	var wave_scale: float = 1.0 + float(safe_wave - 1) * ELEMENT_WAVE_SCALE_PER_WAVE
 
 	packet.add_damage(base_damage, "physical", "base")
 	packet.add_debug("[DMG] base physical=%.1f" % base_damage)
 
-	var raw_elements: Dictionary = {}
+	var elements: Dictionary = {}
 
 	for entry in equipped_powerups:
 		if not entry.has("powerup") or not entry.has("rank"):
@@ -28,51 +21,37 @@ static func build_projectile_packet(base_damage: float, equipped_powerups: Array
 
 		if powerup == null:
 			continue
+
 		if powerup.element_type == PowerUpData.ElementType.NONE:
 			continue
 
-		var raw_pool: float = base_damage * powerup.amount * float(rank) * wave_scale
+		rank = max(1, rank)
 
-		if not raw_elements.has(powerup.element_type):
-			raw_elements[powerup.element_type] = 0.0
+		var element_damage: float = base_damage * powerup.amount * float(rank)
 
-		raw_elements[powerup.element_type] += raw_pool
+		if not elements.has(powerup.element_type):
+			elements[powerup.element_type] = 0.0
 
-	if raw_elements.is_empty():
+		elements[powerup.element_type] += element_damage
+
+		packet.add_debug(
+			"[DMG] %s rank %d added %.1f elemental damage" %
+			[element_to_damage_type(powerup.element_type), rank, element_damage]
+		)
+
+	if elements.is_empty():
 		return packet
 
-	var raw_total: float = 0.0
-	for element_type in raw_elements:
-		raw_total += float(raw_elements[element_type])
-
-	var elemental_cap: float = base_damage * get_element_cap_multiplier(safe_wave)
-	var cap_scale: float = 1.0
-
-	if raw_total > elemental_cap:
-		cap_scale = elemental_cap / raw_total
-
-	var capped_elements: Dictionary = {}
-	for element_type in raw_elements:
-		capped_elements[element_type] = float(raw_elements[element_type]) * cap_scale
-
-	_add_combined_element_damage(packet, capped_elements)
+	_add_combined_element_damage(packet, elements)
 
 	return packet
 
 
 static func _add_combined_element_damage(packet: DamagePacket, elements: Dictionary) -> void:
-	var ordered: Array[int] = [
-		PowerUpData.ElementType.FIRE,
-		PowerUpData.ElementType.ICE,
-		PowerUpData.ElementType.LIGHTNING,
-		PowerUpData.ElementType.POISON,
-	]
-
 	var remaining: Array[int] = []
 
-	for element_type in ordered:
-		if elements.has(element_type):
-			remaining.append(element_type)
+	for element_type in elements.keys():
+		remaining.append(int(element_type))
 
 	while remaining.size() >= 2:
 		var a: int = remaining[0]
@@ -97,14 +76,6 @@ static func _add_combined_element_damage(packet: DamagePacket, elements: Diction
 
 		packet.add_damage(amount, damage_type, "element")
 		packet.add_debug("[DMG] loose %s=%.1f" % [damage_type, amount])
-
-
-static func get_element_cap_multiplier(wave: int) -> float:
-	if wave <= 5:
-		return BASE_WAVE_ELEMENT_CAP
-	if wave <= 10:
-		return MID_WAVE_ELEMENT_CAP
-	return LATE_WAVE_ELEMENT_CAP
 
 
 static func element_to_damage_type(element_type: int) -> String:

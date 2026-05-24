@@ -1,6 +1,7 @@
 extends Area2D
 class_name Projectile
 
+
 @export var speed: float = 450.0
 @export var damage: int = 10
 @export var lifetime: float = 10.0
@@ -23,26 +24,21 @@ var secondary_rank: int = 1
 
 var sprite_frames_override: SpriteFrames = null
 
-const DMG_PHYSICAL := Color(1.00, 1.00, 1.00)
-const DMG_FIRE := Color(1.00, 0.42, 0.08)
-const DMG_ICE := Color(0.40, 0.85, 1.00)
-const DMG_LIGHTNING := Color(0.80, 0.55, 1.00)
-const DMG_POISON := Color(0.35, 1.00, 0.30)
-const DMG_COMBO := Color(1.00, 0.88, 0.15)
-
-const CHAIN_RADIUS: float = 150.0
-const CHAIN_DAMAGE_FALLOFF: float = 0.6
-
-var _hit_tracker: Dictionary = {}
+var impact_handler: ProjectileImpactHandler = null
 
 
 func _ready() -> void:
+	impact_handler = ProjectileImpactHandler.new(self)
+
 	add_to_group("projectiles")
+
 	area_entered.connect(_on_area_entered)
 	body_entered.connect(_on_body_entered)
+
 	play_projectile_animation()
 
 	await get_tree().create_timer(lifetime).timeout
+
 	if is_inside_tree():
 		queue_free()
 
@@ -51,6 +47,7 @@ func _physics_process(delta: float) -> void:
 	match projectile_type:
 		PowerUpData.ProjectileType.HOMING:
 			_update_homing(delta)
+
 		PowerUpData.ProjectileType.RICOCHET:
 			_check_ricochet(delta)
 
@@ -86,13 +83,15 @@ func apply_projectile_type(type: int, rank: int) -> void:
 			if animated_sprite != null:
 				animated_sprite.scale = Vector2(size_mult, size_mult)
 
-			var col := get_node_or_null("CollisionShape2D")
-			if col != null and col.shape != null:
-				col.shape = col.shape.duplicate()
-				if col.shape is CircleShape2D:
-					col.shape.radius *= size_mult
-				elif col.shape is RectangleShape2D:
-					col.shape.size *= size_mult
+			var collision_shape := get_node_or_null("CollisionShape2D")
+
+			if collision_shape != null and collision_shape.shape != null:
+				collision_shape.shape = collision_shape.shape.duplicate()
+
+				if collision_shape.shape is CircleShape2D:
+					collision_shape.shape.radius *= size_mult
+				elif collision_shape.shape is RectangleShape2D:
+					collision_shape.shape.size *= size_mult
 
 		PowerUpData.ProjectileType.RICOCHET:
 			bounces_remaining = rank + 1
@@ -105,6 +104,9 @@ func apply_projectile_type(type: int, rank: int) -> void:
 		PowerUpData.ProjectileType.HOMING:
 			homing_strength = 2.5 + float(rank) * 1.5
 			lifetime = 6.0
+
+		_:
+			pass
 
 
 func apply_secondary_type(type: int, rank: int) -> void:
@@ -133,6 +135,7 @@ func play_projectile_animation() -> void:
 		return
 
 	var anims := animated_sprite.sprite_frames.get_animation_names()
+
 	if anims.size() > 0:
 		animated_sprite.play(anims[0])
 
@@ -142,115 +145,13 @@ func _on_body_entered(_body: Node2D) -> void:
 
 
 func _on_area_entered(area: Area2D) -> void:
-	_try_damage(area)
-
-
-func _try_damage(target: Node) -> void:
-	var health_component := target.get_node_or_null("HealthComponent")
-	var enemy_root: Node = target
-
-	if health_component == null and target.get_parent() != null:
-		health_component = target.get_parent().get_node_or_null("HealthComponent")
-		if health_component != null:
-			enemy_root = target.get_parent()
-
-	if health_component == null:
+	if impact_handler == null:
 		return
 
-	var status_component := enemy_root.get_node_or_null("StatusEffectComponent") as StatusEffectComponent
-
-	_hit_tracker.clear()
-
-	if projectile_type == PowerUpData.ProjectileType.NOVA:
-		_apply_nova(enemy_root)
-		_flush_damage_numbers()
-		queue_free()
-		return
-
-	var packet: DamagePacket = DamageResolver.build_projectile_packet(
-		float(damage),
-		PlayerInventory.get_equipped_powerups_with_ranks(),
-		PlayerInventory.current_wave
-	)
-
-	packet.print_debug()
-
-	_apply_damage_packet(enemy_root, health_component, packet)
-	_apply_packet_status_effects(enemy_root, status_component, packet)
-
-	if secondary_type == PowerUpData.ProjectileType.NOVA:
-		_apply_nova(enemy_root)
-
-	_flush_damage_numbers()
-	_handle_pierce_or_destroy()
+	impact_handler.handle_hit(area)
 
 
-func _apply_damage_packet(enemy_root: Node, health_component: Node, packet: DamagePacket) -> void:
-	if packet == null or packet.is_empty():
-		return
-
-	if health_component.has_method("take_damage_packet"):
-		health_component.take_damage_packet(packet)
-	else:
-		health_component.take_damage(packet.get_total(), "physical")
-
-	var id := enemy_root.get_instance_id()
-	if not _hit_tracker.has(id):
-		_hit_tracker[id] = {
-			"root": enemy_root,
-			"hits": []
-		}
-
-	for entry: Dictionary in packet.entries:
-		var amount: float = float(entry.amount)
-		var damage_type: String = String(entry.type)
-		var color: Color = DamageVisuals.get_color(damage_type)
-
-		_hit_tracker[id]["hits"].append({
-			"amount": amount,
-			"color": color,
-			"type": damage_type
-		})
-
-		DamageMeter.record(amount, damage_type)
-
-
-func _apply_packet_status_effects(
-	enemy_root: Node,
-	status_component: StatusEffectComponent,
-	packet: DamagePacket
-) -> void:
-	if status_component == null:
-		return
-	if packet == null or packet.is_empty():
-		return
-
-	for entry: Dictionary in packet.entries:
-		var amount: float = float(entry.amount)
-		var damage_type: String = String(entry.type)
-
-		match damage_type:
-			"fire":
-				status_component.apply_burn(amount / 8.0, 3.0, 0.5)
-
-			"ice":
-				status_component.apply_slow(0.25, 2.0)
-
-			"lightning":
-				status_component.apply_stun(0.35)
-				_chain_lightning(enemy_root, amount, 1)
-
-			"poison":
-				status_component.apply_poison(amount / 10.0, 4.0, 0.5)
-
-			"thermal", "magnetic", "corrosive", "viral", "plasma", "neurotoxin":
-				status_component.apply_combo_effect(damage_type, amount)
-
-			_:
-				pass
-
-
-func _handle_pierce_or_destroy() -> void:
+func handle_pierce_or_destroy() -> void:
 	if projectile_type == PowerUpData.ProjectileType.PHASE or secondary_type == PowerUpData.ProjectileType.PHASE:
 		var remaining: int = get_meta("pierce_remaining", 0)
 		remaining -= 1
@@ -267,6 +168,7 @@ func _handle_pierce_or_destroy() -> void:
 
 func _update_homing(delta: float) -> void:
 	var nearest := _find_nearest_enemy()
+
 	if nearest == null:
 		return
 
@@ -280,17 +182,21 @@ func _check_ricochet(delta: float) -> void:
 		return
 
 	var space := get_world_2d().direct_space_state
+
 	var query := PhysicsRayQueryParameters2D.create(
 		global_position,
 		global_position + direction * speed * delta * 3.0
 	)
+
 	query.exclude = [self]
 
 	var result := space.intersect_ray(query)
+
 	if result.is_empty():
 		return
 
 	var collider: Node = result.collider
+
 	if collider.is_in_group("enemies") or collider.is_in_group("player"):
 		return
 
@@ -304,119 +210,6 @@ func _check_ricochet(delta: float) -> void:
 		tween.tween_property(animated_sprite, "modulate", Color.WHITE, 0.1)
 
 
-func _apply_nova(enemy_root: Node) -> void:
-	var nova_damage: float = float(damage) * nova_damage_ratio
-
-	for nearby in get_tree().get_nodes_in_group("enemies"):
-		if not is_instance_valid(nearby):
-			continue
-
-		var dist: float = enemy_root.global_position.distance_to(nearby.global_position)
-		if dist > nova_radius:
-			continue
-
-		var falloff: float = 1.0 - (dist / nova_radius) * 0.5
-		var hc := nearby.get_node_or_null("HealthComponent")
-
-		if hc != null and hc.has_method("take_damage"):
-			_deal(nearby, hc, nova_damage * falloff, DMG_FIRE)
-
-	_draw_nova_ring(enemy_root.global_position, nova_radius)
-
-
-func _chain_lightning(source_enemy: Node, element_pool: float, rank: int) -> void:
-	var current_damage: float = element_pool
-	var hit_enemies: Array = [source_enemy]
-
-	for _i in rank:
-		var last_hit: Node = hit_enemies.back()
-		if not is_instance_valid(last_hit):
-			break
-
-		var nearest_enemy: Node = null
-		var nearest_dist: float = CHAIN_RADIUS
-
-		for enemy in get_tree().get_nodes_in_group("enemies"):
-			if enemy in hit_enemies or not is_instance_valid(enemy):
-				continue
-
-			var dist: float = last_hit.global_position.distance_to(enemy.global_position)
-			if dist < nearest_dist:
-				nearest_dist = dist
-				nearest_enemy = enemy
-
-		if nearest_enemy == null:
-			break
-
-		current_damage *= CHAIN_DAMAGE_FALLOFF
-
-		var hc := nearest_enemy.get_node_or_null("HealthComponent")
-		if hc != null and hc.has_method("take_damage"):
-			_deal(nearest_enemy, hc, current_damage, DMG_LIGHTNING)
-
-		var chained_status := nearest_enemy.get_node_or_null("StatusEffectComponent") as StatusEffectComponent
-		if chained_status != null:
-			chained_status.apply_stun(0.35)
-
-		_draw_chain_arc(last_hit.global_position, nearest_enemy.global_position)
-		hit_enemies.append(nearest_enemy)
-
-
-func _deal(enemy_root: Node, health_component: Node, amount: float, color: Color = DMG_PHYSICAL) -> void:
-	if amount <= 0.0:
-		return
-
-	var damage_type: String = _color_to_type(color)
-
-	if health_component.has_method("take_damage"):
-		health_component.take_damage(amount, damage_type)
-
-	var id := enemy_root.get_instance_id()
-	if not _hit_tracker.has(id):
-		_hit_tracker[id] = {
-			"root": enemy_root,
-			"hits": []
-		}
-
-	_hit_tracker[id]["hits"].append({
-		"amount": amount,
-		"color": DamageVisuals.get_color(damage_type),
-		"type": damage_type
-	})
-
-	DamageMeter.record(amount, damage_type)
-
-
-func _flush_damage_numbers() -> void:
-	for id in _hit_tracker:
-		var entry: Dictionary = _hit_tracker[id]
-
-		var root: Node2D = entry.get("root", null) as Node2D
-		if root == null:
-			continue
-
-		var spawn_pos: Vector2 = DamageNumberSpawner.get_anchor_position(root)
-		var index: int = 0
-
-		for hit: Dictionary in entry["hits"]:
-			var amount: float = float(hit.amount)
-			var damage_type: String = String(hit.get("type", "physical"))
-			var color: Color = DamageVisuals.get_color(damage_type)
-
-			DamageNumberSpawner.spawn(
-				spawn_pos,
-				amount,
-				DamageVisuals.get_display_name(damage_type),
-				color,
-				index,
-				false
-			)
-
-			index += 1
-
-	_hit_tracker.clear()
-
-
 func _find_nearest_enemy() -> Node2D:
 	var nearest: Node2D = null
 	var nearest_dist: float = 9999.0
@@ -425,50 +218,13 @@ func _find_nearest_enemy() -> Node2D:
 		if not is_instance_valid(enemy):
 			continue
 
+		if not enemy is Node2D:
+			continue
+
 		var dist: float = global_position.distance_to(enemy.global_position)
+
 		if dist < nearest_dist:
 			nearest_dist = dist
 			nearest = enemy as Node2D
 
 	return nearest
-
-
-func _color_to_type(color: Color) -> String:
-	if color == DMG_FIRE:
-		return "fire"
-	if color == DMG_ICE:
-		return "ice"
-	if color == DMG_LIGHTNING:
-		return "lightning"
-	if color == DMG_POISON:
-		return "poison"
-	if color == DMG_COMBO:
-		return "combo"
-	return "physical"
-
-
-func _draw_chain_arc(from_pos: Vector2, to_pos: Vector2) -> void:
-	var line := Line2D.new()
-	line.z_index = 10
-
-	for i in range(9):
-		var t: float = float(i) / 8.0
-		var point: Vector2 = from_pos.lerp(to_pos, t)
-
-		if i > 0 and i < 8:
-			var perp: Vector2 = (to_pos - from_pos).normalized().rotated(PI * 0.5)
-			point += perp * randf_range(-12.0, 12.0)
-
-		line.add_point(point)
-
-	line.width = 2.0
-	line.default_color = Color(0.7, 0.85, 1.0, 0.9)
-	get_tree().current_scene.add_child(line)
-
-	var tween := line.create_tween()
-	tween.tween_property(line, "modulate:a", 0.0, 0.2)
-	tween.tween_callback(line.queue_free)
-
-
-func _draw_nova_ring(_pos: Vector2, _radius: float) -> void:
-	pass

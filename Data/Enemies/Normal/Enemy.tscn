@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://jk2i6jkyioqr" path="res://assets/health/health_bar_over.png" id="5_8qclf"]
 [ext_resource type="PackedScene" uid="uid://m5gvnpyrt5qo" path="res://Data/UI/GoldPickUp.tscn" id="6_otmr2"]
 [ext_resource type="Script" uid="uid://c1a1irgpyt41k" path="res://scripts/world_health_bar.gd" id="6_w8i8w"]
+[ext_resource type="FontFile" uid="uid://c8a7t0mpsf5wi" path="res://assets/fonts/damage_font.ttf" id="11_e6qu2"]
 [ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://components/StatusEffectComponent.gd" id="12_lbu74"]
 [ext_resource type="Script" uid="uid://c7g1ssiarnys1" path="res://scripts/enemy_debug_label.gd" id="15_g0wcc"]
 
@@ -115,6 +116,8 @@ shape = SubResource("CircleShape2D_md484")
 [node name="DebugLabel" type="Label" parent="." unique_id=88823512]
 offset_right = 40.0
 offset_bottom = 23.0
+theme_override_fonts/font = ExtResource("11_e6qu2")
+theme_override_font_sizes/font_size = 9
 script = ExtResource("15_g0wcc")
 
 [node name="StatusEffectComponent" type="Node" parent="." unique_id=1318317081]

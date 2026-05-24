@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="PowerUpData" format=3]
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://ba2u6l320s1dd"]
 
 [ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1_PowerUpData"]
 
@@ -7,10 +7,7 @@ script = ExtResource("1_PowerUpData")
 id = "venom_injector"
 display_name = "Venom Injector"
 description = "Projectiles apply ramping poison that grows stronger the longer it is active. Devastating against high health targets."
-icon = null
 rarity = 1
-max_stacks = 5
-stat_to_modify = ""
-modifier_type = 0
-amount = 1.0
+modifier_type = 1
+amount = 0.3
 element_type = 4

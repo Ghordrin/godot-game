@@ -8,5 +8,6 @@ id = "arc_conductor"
 display_name = "Arc Conductor"
 description = "Projectiles deal electric damage, stun enemies, and chain to nearby targets. Chains increase with rank."
 rarity = 1
-amount = 1.0
+modifier_type = 1
+amount = 0.3
 element_type = 3

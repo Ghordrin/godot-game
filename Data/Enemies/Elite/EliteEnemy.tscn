@@ -9,6 +9,8 @@
 [ext_resource type="Script" uid="uid://c1a1irgpyt41k" path="res://scripts/world_health_bar.gd" id="6_pnhgq"]
 [ext_resource type="Texture2D" uid="uid://cnl75j7i1kn5u" path="res://assets/health/hp_bar.png" id="7_nctmk"]
 [ext_resource type="Texture2D" uid="uid://jk2i6jkyioqr" path="res://assets/health/health_bar_over.png" id="8_twmx3"]
+[ext_resource type="FontFile" uid="uid://c8a7t0mpsf5wi" path="res://assets/fonts/damage_font.ttf" id="10_etcux"]
+[ext_resource type="Script" uid="uid://c7g1ssiarnys1" path="res://scripts/enemy_debug_label.gd" id="10_jfym4"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_285ob"]
 atlas = ExtResource("2_r852y")
@@ -122,3 +124,10 @@ texture_over = ExtResource("7_nctmk")
 texture_progress = ExtResource("8_twmx3")
 script = ExtResource("6_pnhgq")
 metadata/_custom_type_script = "uid://c1a1irgpyt41k"
+
+[node name="DebugLabel" type="Label" parent="." unique_id=1983229373]
+offset_right = 40.0
+offset_bottom = 23.0
+theme_override_fonts/font = ExtResource("10_etcux")
+theme_override_font_sizes/font_size = 6
+script = ExtResource("10_jfym4")

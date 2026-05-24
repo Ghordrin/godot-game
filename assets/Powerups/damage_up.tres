@@ -8,6 +8,5 @@ id = "damge_up"
 display_name = "Damage"
 description = "Increases the damage"
 stat_to_modify = "damage"
-modifier_type = 1
-amount = 1.5
+amount = 5.0
 metadata/_custom_type_script = "uid://c6rwp657h3iie"
