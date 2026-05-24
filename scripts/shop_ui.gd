@@ -5,6 +5,12 @@ signal shop_closed
 
 const OFFER_SIZE: int = 3
 
+enum ShopMode {
+	NORMAL,
+	STARTER_ELEMENT,
+	STARTER_PROJECTILE
+}
+
 @export var common_card_scene: PackedScene
 @export var rare_card_scene: PackedScene
 @export var epic_card_scene: PackedScene
@@ -24,9 +30,10 @@ const COLOR_MUTED := Color(0.5, 0.48, 0.45)
 const COLOR_DISABLED := Color(0.3, 0.28, 0.26)
 
 var loot_table: PowerUpTable = null
-var offer: Array[PowerUpData] = []
 var current_wave: int = 0
+var mode: ShopMode = ShopMode.NORMAL
 
+var offer: Array[PowerUpData] = []
 var selected_powerup: PowerUpData = null
 var selection_confirmed: bool = false
 
@@ -35,6 +42,7 @@ var main_panel: PanelContainer
 var wave_label: Label
 var gold_label: Label
 var current_build_label: Label
+var title_label: Label
 var powerup_container: HBoxContainer
 var continue_btn: Button
 var reroll_btn: Button = null
@@ -151,12 +159,12 @@ func _build_title(parent: Control) -> void:
 	margin.add_theme_constant_override("margin_bottom", 8)
 	parent.add_child(margin)
 
-	var label := Label.new()
-	label.text = "CHOOSE YOUR UPGRADE"
-	label.add_theme_font_size_override("font_size", 18)
-	label.add_theme_color_override("font_color", COLOR_TITLE)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	margin.add_child(label)
+	title_label = Label.new()
+	title_label.text = "CHOOSE YOUR UPGRADE"
+	title_label.add_theme_font_size_override("font_size", 18)
+	title_label.add_theme_color_override("font_color", COLOR_TITLE)
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	margin.add_child(title_label)
 
 
 func _build_cards(parent: Control) -> void:
@@ -219,19 +227,23 @@ func _build_footer(parent: Control) -> void:
 
 	continue_btn = Button.new()
 	continue_btn.text = "CONTINUE  ▶"
-	continue_btn.custom_minimum_size = Vector2(200, 48)
+	continue_btn.custom_minimum_size = Vector2(220, 48)
 	continue_btn.add_theme_font_size_override("font_size", 15)
 	continue_btn.add_theme_color_override("font_color", Color.WHITE)
 	continue_btn.add_theme_color_override("font_hover_color", COLOR_GOLD_TEXT)
+	continue_btn.add_theme_color_override("font_disabled_color", COLOR_DISABLED)
 	continue_btn.add_theme_stylebox_override("normal", _make_stylebox(Color(0.15, 0.13, 0.22), 2, COLOR_ACCENT, 6))
 	continue_btn.add_theme_stylebox_override("hover", _make_stylebox(Color(0.2, 0.17, 0.3), 2, COLOR_GOLD_TEXT, 6))
+	continue_btn.add_theme_stylebox_override("disabled", _make_stylebox(Color(0.08, 0.08, 0.1), 1, COLOR_DISABLED, 6))
 	continue_btn.pressed.connect(_on_continue_pressed)
 	hbox.add_child(continue_btn)
 
 
-func open_shop(wave: int, table: PowerUpTable) -> void:
+func open_shop(wave: int, table: PowerUpTable, shop_mode: Variant = false) -> void:
 	current_wave = wave
 	loot_table = table
+	mode = _resolve_shop_mode(shop_mode)
+
 	selected_powerup = null
 	selection_confirmed = false
 
@@ -242,25 +254,64 @@ func open_shop(wave: int, table: PowerUpTable) -> void:
 	_update_display()
 
 
+func _resolve_shop_mode(shop_mode: Variant) -> ShopMode:
+	if shop_mode is bool:
+		return ShopMode.STARTER_ELEMENT if bool(shop_mode) else ShopMode.NORMAL
+
+	if shop_mode is int:
+		return shop_mode as ShopMode
+
+	if shop_mode is String:
+		match String(shop_mode).to_lower():
+			"starter_element", "element", "starting_element":
+				return ShopMode.STARTER_ELEMENT
+			"starter_projectile", "projectile", "starting_projectile":
+				return ShopMode.STARTER_PROJECTILE
+
+	return ShopMode.NORMAL
+
+
 func _roll_new_offer() -> void:
 	offer.clear()
 
-	if loot_table != null:
-		offer = loot_table.roll_shop_offer(OFFER_SIZE)
+	if loot_table == null:
+		return
+
+	match mode:
+		ShopMode.STARTER_ELEMENT:
+			offer = loot_table.roll_category_offer(PowerUpData.Category.ELEMENT, OFFER_SIZE)
+
+		ShopMode.STARTER_PROJECTILE:
+			offer = loot_table.roll_category_offer(PowerUpData.Category.PROJECTILE, OFFER_SIZE)
+
+		_:
+			offer = loot_table.roll_shop_offer(OFFER_SIZE)
 
 
 func _update_display() -> void:
-	wave_label.text = "WAVE %d" % current_wave
+	match mode:
+		ShopMode.STARTER_ELEMENT:
+			wave_label.text = "STARTING ELEMENT"
+			title_label.text = "CHOOSE YOUR FIRST ELEMENT"
+
+		ShopMode.STARTER_PROJECTILE:
+			wave_label.text = "PROJECTILE UNLOCK"
+			title_label.text = "CHOOSE YOUR FIRST PROJECTILE"
+
+		_:
+			wave_label.text = "WAVE %d" % current_wave
+			title_label.text = "CHOOSE YOUR UPGRADE"
+
 	_update_gold_display()
 	_update_current_build_display()
 	_refresh_cards()
-	_update_reroll_button()
-	_update_continue_button()
+	_update_footer_buttons()
 
 
 func _refresh_cards() -> void:
 	for card in card_nodes:
-		card.queue_free()
+		if is_instance_valid(card):
+			card.queue_free()
 
 	card_nodes.clear()
 
@@ -301,46 +352,54 @@ func _on_powerup_selected(powerup: PowerUpData) -> void:
 		return
 
 	selected_powerup = powerup
+	_update_card_selection()
+	_update_footer_buttons()
 
+
+func _update_card_selection() -> void:
 	for card in card_nodes:
-		if card.has_method("set_selected"):
-			var was_chosen: bool = false
+		if not is_instance_valid(card):
+			continue
 
-			if "_powerup" in card:
-				was_chosen = card._powerup == selected_powerup
+		if not card.has_method("set_selected"):
+			continue
 
-			card.set_selected(was_chosen, false)
+		var was_chosen := false
 
-	_update_continue_button()
+		if "_powerup" in card:
+			was_chosen = card._powerup == selected_powerup
+
+		card.set_selected(was_chosen, false)
 
 
 func _on_continue_pressed() -> void:
-	if selected_powerup != null and not selection_confirmed:
-		_confirm_selected_powerup()
+	if selection_confirmed:
+		return
 
+	if _is_forced_pick_shop() and selected_powerup == null:
+		return
+
+	if selected_powerup != null:
+		_confirm_powerup(selected_powerup)
+
+	selection_confirmed = true
 	visible = false
 	get_tree().paused = false
 	shop_closed.emit()
 
 
-func _confirm_selected_powerup() -> void:
-	if selected_powerup == null:
+func _confirm_powerup(powerup: PowerUpData) -> void:
+	if powerup == null:
 		return
 
-	selection_confirmed = true
+	PlayerInventory.collect_powerup(powerup)
 
-	PlayerInventory.collect_powerup(selected_powerup)
-
-	if not PlayerInventory.is_equipped(selected_powerup):
-		PlayerInventory.equip_powerup(selected_powerup)
-
-	_update_current_build_display()
-	_update_reroll_button()
-	_update_continue_button()
+	if not PlayerInventory.is_equipped(powerup):
+		PlayerInventory.equip_powerup(powerup)
 
 
 func _on_reroll_pressed() -> void:
-	if selection_confirmed:
+	if selection_confirmed or _is_forced_pick_shop():
 		return
 
 	var cost := _get_reroll_cost()
@@ -352,11 +411,13 @@ func _on_reroll_pressed() -> void:
 	_roll_new_offer()
 	_refresh_cards()
 	_update_gold_display()
-	_update_reroll_button()
-	_update_continue_button()
+	_update_footer_buttons()
 
 
 func _on_heal_pressed() -> void:
+	if _is_forced_pick_shop():
+		return
+
 	var cost := _get_heal_cost()
 
 	if not PlayerInventory.spend_gold(cost):
@@ -368,14 +429,88 @@ func _on_heal_pressed() -> void:
 		health_component.heal(health_component.max_health)
 
 	_update_gold_display()
+	_update_footer_buttons()
+
+
+func _is_forced_pick_shop() -> bool:
+	return mode == ShopMode.STARTER_ELEMENT or mode == ShopMode.STARTER_PROJECTILE
+
+
+func _update_footer_buttons() -> void:
 	_update_reroll_button()
+	_update_heal_button()
+	_update_continue_button()
+
+
+func _update_reroll_button() -> void:
+	if reroll_btn == null:
+		return
+
+	if _is_forced_pick_shop():
+		reroll_btn.text = "NO REROLL"
+		reroll_btn.disabled = true
+		reroll_btn.add_theme_color_override("font_color", COLOR_DISABLED)
+		return
+
+	var cost := _get_reroll_cost()
+	var can_afford: bool = PlayerInventory.gold >= cost
+
+	reroll_btn.text = "↺ REROLL  %d" % cost
+	reroll_btn.disabled = not can_afford or selection_confirmed
+	reroll_btn.add_theme_color_override(
+		"font_color",
+		COLOR_GOLD_TEXT if can_afford and not selection_confirmed else COLOR_DISABLED
+	)
+
+
+func _update_heal_button() -> void:
+	if heal_btn == null:
+		return
+
+	if _is_forced_pick_shop():
+		heal_btn.text = "♥ HEAL"
+		heal_btn.disabled = true
+		heal_btn.add_theme_color_override("font_color", COLOR_DISABLED)
+		return
+
+	var heal_cost := _get_heal_cost()
+	var player_health := _find_player_health()
+	var already_full: bool = player_health != null and player_health.current_health >= player_health.max_health
+	var can_afford_heal: bool = PlayerInventory.gold >= heal_cost
+
+	heal_btn.text = "♥ HEAL  %d" % heal_cost
+	heal_btn.disabled = not can_afford_heal or already_full
+	heal_btn.add_theme_color_override(
+		"font_color",
+		Color(0.85, 0.30, 0.30) if can_afford_heal and not already_full else COLOR_DISABLED
+	)
+
+
+func _update_continue_button() -> void:
+	if continue_btn == null:
+		return
+
+	if mode == ShopMode.STARTER_ELEMENT:
+		continue_btn.text = "START RUN  ▶" if selected_powerup != null else "PICK AN ELEMENT"
+		continue_btn.disabled = selected_powerup == null
+		return
+
+	if mode == ShopMode.STARTER_PROJECTILE:
+		continue_btn.text = "CONTINUE  ▶" if selected_powerup != null else "PICK A PROJECTILE"
+		continue_btn.disabled = selected_powerup == null
+		return
+
+	if selected_powerup == null:
+		continue_btn.text = "SKIP  ▶"
+	else:
+		continue_btn.text = "CONFIRM  ▶"
+
+	continue_btn.disabled = false
 
 
 func _update_gold_display(_val: int = 0) -> void:
 	if gold_label != null:
 		gold_label.text = "%d GOLD" % PlayerInventory.gold
-
-	_update_reroll_button()
 
 
 func _update_current_build_display() -> void:
@@ -401,46 +536,6 @@ func _update_current_build_display() -> void:
 
 	current_build_label.text = " | ".join(parts)
 	current_build_label.add_theme_color_override("font_color", COLOR_TITLE)
-
-
-func _update_reroll_button() -> void:
-	if reroll_btn == null:
-		return
-
-	var cost := _get_reroll_cost()
-	var can_afford: bool = PlayerInventory.gold >= cost
-
-	reroll_btn.text = "↺ REROLL  %d" % cost
-	reroll_btn.disabled = not can_afford or selection_confirmed
-	reroll_btn.add_theme_color_override(
-		"font_color",
-		COLOR_GOLD_TEXT if can_afford and not selection_confirmed else COLOR_DISABLED
-	)
-
-	if heal_btn == null:
-		return
-
-	var heal_cost := _get_heal_cost()
-	var player_health := _find_player_health()
-	var already_full: bool = player_health != null and player_health.current_health >= player_health.max_health
-	var can_afford_heal: bool = PlayerInventory.gold >= heal_cost
-
-	heal_btn.text = "♥ HEAL  %d" % heal_cost
-	heal_btn.disabled = not can_afford_heal or already_full
-	heal_btn.add_theme_color_override(
-		"font_color",
-		Color(0.85, 0.30, 0.30) if can_afford_heal and not already_full else COLOR_DISABLED
-	)
-
-
-func _update_continue_button() -> void:
-	if continue_btn == null:
-		return
-
-	if selected_powerup == null:
-		continue_btn.text = "SKIP  ▶"
-	else:
-		continue_btn.text = "CONFIRM  ▶"
 
 
 func _get_reroll_cost() -> int:
@@ -512,17 +607,3 @@ func _make_stylebox(bg: Color, border: int, border_color: Color, radius: int) ->
 	stylebox.content_margin_top = 4
 	stylebox.content_margin_bottom = 4
 	return stylebox
-
-
-func _get_rarity_color(rarity: int) -> Color:
-	match rarity:
-		PowerUpData.Rarity.COMMON:
-			return COLOR_COMMON
-		PowerUpData.Rarity.RARE:
-			return COLOR_RARE
-		PowerUpData.Rarity.EPIC:
-			return COLOR_EPIC
-		PowerUpData.Rarity.LEGENDARY:
-			return COLOR_LEGENDARY
-
-	return COLOR_COMMON

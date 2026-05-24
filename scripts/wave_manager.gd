@@ -2,18 +2,26 @@ extends Node
 class_name WaveManager
 
 # ══════════════════════════════════════════════════════════════════════
-# SHOP / BETWEEN-WAVE CONFIG
+# SHOP / BETWEEN-CHAPTER CONFIG
 # ══════════════════════════════════════════════════════════════════════
 
-@export var shop_interval: int = 5
 @export var shop_scene: PackedScene
 @export var loot_table: PowerUpTable
 @export var countdown_seconds: int = 3
 @export var start_delay_seconds: float = 3.0
-@export var between_wave_delay_seconds: float = 2.0
+@export var between_chapter_delay_seconds: float = 2.0
+@export var open_starting_shop: bool = true
 
 var shop_ui: ShopUI = null
 var countdown_ui: CanvasLayer = null
+
+# ══════════════════════════════════════════════════════════════════════
+# CHAPTER CONFIG
+# ══════════════════════════════════════════════════════════════════════
+
+@export var segments_per_chapter: int = 4
+@export var segment_delay_seconds: float = 4.0
+@export var virtual_waves_per_chapter: int = 5
 
 # ══════════════════════════════════════════════════════════════════════
 # ENEMY CONFIG
@@ -34,10 +42,10 @@ var countdown_ui: CanvasLayer = null
 @export var elite_wave_scaling: float = 0.007
 @export var elite_max_chance: float = 0.15
 @export var elite_max_affixes: int = 2
-@export var max_elites_per_wave: int = 4
+@export var max_elites_per_chapter: int = 4
 
-@export var elite_health_mult: float = 1.35
-@export var elite_damage_mult: float = 1.20
+@export var elite_health_mult: float = 1.25
+@export var elite_damage_mult: float = 1.15
 @export var elite_speed_mult: float = 1.20
 @export var elite_gold_mult: float = 2.0
 
@@ -57,24 +65,25 @@ var countdown_ui: CanvasLayer = null
 
 @export var base_enemy_count: int = 3
 @export var enemies_per_wave: float = 2.5
-@export var max_enemy_count: int = 300
+@export var max_enemy_count_per_segment: int = 120
 
-@export var health_scale: float = 0.10
-@export var damage_scale: float = 0.08
-@export var speed_scale: float = 0.025
+@export var health_scale: float = 0.045
+@export var damage_scale: float = 0.055
+@export var speed_scale: float = 0.012
 @export var gold_scale: float = 0.12
 
 # ══════════════════════════════════════════════════════════════════════
 # BOSS CONFIG
 # ══════════════════════════════════════════════════════════════════════
 
-@export var boss_interval: int = 5
-@export var boss_health_mult: float = 3.5
-@export var boss_damage_mult: float = 2.0
-@export var boss_speed_mult: float = 0.7
+@export var boss_health_mult: float = 1.65
+@export var first_boss_health_mult: float = 1.15
+@export var boss_damage_mult: float = 1.45
+@export var boss_speed_mult: float = 0.75
 
 # ══════════════════════════════════════════════════════════════════════
 # SIGNALS
+# Keeping old signal names for compatibility with existing UI.
 # ══════════════════════════════════════════════════════════════════════
 
 signal wave_started(wave_number: int)
@@ -83,6 +92,10 @@ signal boss_wave_started(wave_number: int)
 signal enemy_count_changed(alive: int, total: int)
 signal between_waves_started(wave_number: int)
 
+signal chapter_started(chapter_number: int)
+signal chapter_completed(chapter_number: int)
+signal chapter_progress_changed(progress: float)
+
 # ══════════════════════════════════════════════════════════════════════
 # STATE
 # ══════════════════════════════════════════════════════════════════════
@@ -90,17 +103,21 @@ signal between_waves_started(wave_number: int)
 enum State {
 	WAITING,
 	SPAWNING,
-	WAVE_ACTIVE,
-	WAVE_COMPLETE,
+	CHAPTER_ACTIVE,
+	CHAPTER_COMPLETE,
 	COUNTDOWN,
-	BETWEEN_WAVES
+	BETWEEN_CHAPTERS
 }
 
 var state: State = State.WAITING
+
+var current_chapter: int = 0
+var current_segment: int = 0
 var current_wave: int = 0
 var alive_enemies: Array[Node2D] = []
 var total_spawned: int = 0
-var elites_spawned_this_wave: int = 0
+var elites_spawned_this_chapter: int = 0
+var boss_spawned_this_chapter: bool = false
 
 # ══════════════════════════════════════════════════════════════════════
 # LIFECYCLE
@@ -111,7 +128,11 @@ func _ready() -> void:
 	_setup_countdown_ui()
 
 	await get_tree().create_timer(start_delay_seconds).timeout
-	start_next_wave()
+
+	if open_starting_shop and shop_ui != null and loot_table != null:
+		await _open_starting_shop()
+
+	start_next_chapter()
 
 
 func _setup_shop_ui() -> void:
@@ -151,61 +172,91 @@ func _setup_countdown_ui() -> void:
 # ══════════════════════════════════════════════════════════════════════
 
 func start_next_wave() -> void:
-	if not _can_start_next_wave():
+	start_next_chapter()
+
+
+func start_next_chapter() -> void:
+	if not _can_start_next_chapter():
 		return
 
-	current_wave += 1
+	current_chapter += 1
+	current_segment = 0
+	elites_spawned_this_chapter = 0
+	boss_spawned_this_chapter = false
 
-	var wave_data: Dictionary = _build_wave_data(current_wave)
+	current_wave = _get_virtual_wave_for_segment(1)
+	PlayerInventory.current_wave = current_wave
+	DamageMeter.reset()
 
-	_prepare_wave_start(wave_data)
-	await _spawn_wave(wave_data)
-	_finish_wave_spawn_phase()
+	state = State.SPAWNING
+
+	chapter_started.emit(current_chapter)
+	wave_started.emit(current_wave)
+
+	await _run_chapter()
 
 
 func get_wave_info() -> Dictionary:
 	return {
 		"wave": current_wave,
+		"chapter": current_chapter,
+		"segment": current_segment,
 		"alive": alive_enemies.size(),
 		"total": total_spawned,
 		"state": State.keys()[state],
-		"is_boss_wave": _is_boss_wave(current_wave),
-		"elites_spawned": elites_spawned_this_wave,
+		"is_boss_wave": boss_spawned_this_chapter,
+		"elites_spawned": elites_spawned_this_chapter,
+		"chapter_progress": _get_chapter_progress(),
 	}
 
 # ══════════════════════════════════════════════════════════════════════
-# WAVE FLOW
+# CHAPTER FLOW
 # ══════════════════════════════════════════════════════════════════════
 
-func _can_start_next_wave() -> bool:
-	return state == State.WAITING or state == State.BETWEEN_WAVES
+func _can_start_next_chapter() -> bool:
+	return state == State.WAITING or state == State.BETWEEN_CHAPTERS
 
 
-func _prepare_wave_start(wave_data: Dictionary) -> void:
-	state = State.SPAWNING
-	total_spawned = int(wave_data.total_count)
-	elites_spawned_this_wave = 0
-
-	PlayerInventory.current_wave = current_wave
-	DamageMeter.reset()
-
-	if bool(wave_data.is_boss):
-		boss_wave_started.emit(current_wave)
-
-	wave_started.emit(current_wave)
+func _run_chapter() -> void:
+	total_spawned = 0
 	enemy_count_changed.emit(alive_enemies.size(), total_spawned)
 
+	for segment_index in range(1, segments_per_chapter + 1):
+		current_segment = segment_index
+		current_wave = _get_virtual_wave_for_segment(segment_index)
+		PlayerInventory.current_wave = current_wave
 
-func _finish_wave_spawn_phase() -> void:
-	if alive_enemies.is_empty():
-		_on_wave_cleared()
+		var wave_data: Dictionary = _build_segment_data(current_wave, false)
+
+		await _spawn_segment(wave_data)
+		chapter_progress_changed.emit(_get_chapter_progress())
+
+		if segment_index < segments_per_chapter:
+			await get_tree().create_timer(segment_delay_seconds).timeout
+
+	current_segment = segments_per_chapter + 1
+	current_wave = _get_virtual_wave_for_boss()
+	PlayerInventory.current_wave = current_wave
+
+	await _spawn_boss_segment(current_wave)
+
+	state = State.CHAPTER_ACTIVE
+
+
+func _finish_chapter_if_ready() -> void:
+	if state != State.CHAPTER_ACTIVE:
 		return
 
-	state = State.WAVE_ACTIVE
+	if not alive_enemies.is_empty():
+		return
+
+	_on_chapter_cleared()
 
 
-func _on_wave_cleared() -> void:
-	state = State.WAVE_COMPLETE
+func _on_chapter_cleared() -> void:
+	state = State.CHAPTER_COMPLETE
+
+	chapter_completed.emit(current_chapter)
 	wave_completed.emit(current_wave)
 
 	_clear_projectiles()
@@ -222,24 +273,34 @@ func _on_wave_cleared() -> void:
 func _on_countdown_finished() -> void:
 	PlayerInventory.clear_wave_temporary_powerups()
 
-	if _should_open_shop():
-		await _open_shop(current_wave)
+	if shop_ui != null:
+		if current_chapter == 1:
+			await _open_projectile_unlock_shop(current_wave)
+		else:
+			await _open_shop(current_wave)
 
-	state = State.BETWEEN_WAVES
+	state = State.BETWEEN_CHAPTERS
 	between_waves_started.emit(current_wave)
 
-	await get_tree().create_timer(between_wave_delay_seconds).timeout
-	start_next_wave()
+	await get_tree().create_timer(between_chapter_delay_seconds).timeout
+	start_next_chapter()
 
 
-func _should_open_shop() -> bool:
-	if shop_interval <= 0:
-		return false
+func _open_starting_shop() -> void:
+	shop_ui.open_shop(0, loot_table, true)
+	await shop_ui.shop_closed
 
+
+func _open_projectile_unlock_shop(wave_number: int) -> void:
 	if shop_ui == null:
-		return false
+		return
 
-	return current_wave % shop_interval == 0
+	if loot_table == null:
+		push_warning("WaveManager: loot_table not assigned, projectile shop cannot open correctly.")
+		return
+
+	shop_ui.open_shop(wave_number, loot_table, "starter_projectile")
+	await shop_ui.shop_closed
 
 
 func _open_shop(wave_number: int) -> void:
@@ -250,7 +311,7 @@ func _open_shop(wave_number: int) -> void:
 		push_warning("WaveManager: loot_table not assigned, shop cannot open correctly.")
 		return
 
-	shop_ui.open_shop(wave_number, loot_table)
+	shop_ui.open_shop(wave_number, loot_table, false)
 	await shop_ui.shop_closed
 
 
@@ -259,18 +320,41 @@ func _clear_projectiles() -> void:
 		if is_instance_valid(projectile):
 			projectile.queue_free()
 
+
+func _get_chapter_progress() -> float:
+	if segments_per_chapter <= 0:
+		return 0.0
+
+	var boss_part: float = 1.0 if boss_spawned_this_chapter else 0.0
+	var total_steps: float = float(segments_per_chapter + 1)
+	var completed_steps: float = clampf(float(current_segment - 1) + boss_part, 0.0, total_steps)
+
+	return completed_steps / total_steps
+
 # ══════════════════════════════════════════════════════════════════════
-# WAVE DATA
+# CHAPTER / VIRTUAL WAVE DATA
 # ══════════════════════════════════════════════════════════════════════
 
-func _build_wave_data(wave_num: int) -> Dictionary:
+func _get_virtual_wave_for_segment(segment_index: int) -> int:
+	var chapter_start_wave: int = ((current_chapter - 1) * virtual_waves_per_chapter) + 1
+	return chapter_start_wave + segment_index - 1
+
+
+func _get_virtual_wave_for_boss() -> int:
+	var chapter_start_wave: int = ((current_chapter - 1) * virtual_waves_per_chapter) + 1
+
+	# Boss used to inherit the final virtual wave.
+	# That made Chapter 1 bosses too spongey.
+	# This keeps boss progression one step behind the final segment.
+	return chapter_start_wave + maxi(0, virtual_waves_per_chapter - 2)
+
+
+func _build_segment_data(wave_num: int, is_boss: bool) -> Dictionary:
 	var enemy_count: int = _get_enemy_count(wave_num)
-	var is_boss: bool = _is_boss_wave(wave_num)
 
 	return {
 		"wave": wave_num,
 		"count": enemy_count,
-		"total_count": enemy_count + (1 if is_boss else 0),
 		"health_mult": _get_health_multiplier(wave_num),
 		"damage_mult": _get_damage_multiplier(wave_num),
 		"speed_mult": _get_speed_multiplier(wave_num),
@@ -282,7 +366,7 @@ func _build_wave_data(wave_num: int) -> Dictionary:
 
 func _get_enemy_count(wave_num: int) -> int:
 	var scaled_count: int = base_enemy_count + int(float(wave_num - 1) * enemies_per_wave)
-	return mini(scaled_count, max_enemy_count)
+	return mini(scaled_count, max_enemy_count_per_segment)
 
 
 func _get_health_multiplier(wave_num: int) -> float:
@@ -299,13 +383,6 @@ func _get_speed_multiplier(wave_num: int) -> float:
 
 func _get_gold_multiplier(wave_num: int) -> float:
 	return 1.0 + float(wave_num - 1) * gold_scale
-
-
-func _is_boss_wave(wave_num: int) -> bool:
-	if boss_interval <= 0:
-		return false
-
-	return wave_num > 0 and wave_num % boss_interval == 0
 
 
 func _get_unlocked_enemy_scenes(wave_num: int) -> Array[PackedScene]:
@@ -326,35 +403,72 @@ func _get_unlocked_enemy_scenes(wave_num: int) -> Array[PackedScene]:
 # SPAWNING
 # ══════════════════════════════════════════════════════════════════════
 
-func _spawn_wave(wave_data: Dictionary) -> void:
-	var enemy_scenes_for_wave: Array[PackedScene] = wave_data.enemy_scenes
+func _spawn_segment(segment_data: Dictionary) -> void:
+	state = State.SPAWNING
 
-	if enemy_scenes_for_wave.is_empty():
-		push_warning("WaveManager: no enemy scenes available for wave %d." % current_wave)
+	var enemy_scenes_for_segment: Array[PackedScene] = segment_data.enemy_scenes
+
+	if enemy_scenes_for_segment.is_empty():
+		push_warning("WaveManager: no enemy scenes available for virtual wave %d." % current_wave)
 		return
 
-	var count: int = int(wave_data.count)
+	var count: int = int(segment_data.count)
 	var dynamic_stagger: float = _get_dynamic_spawn_stagger(count)
+
+	total_spawned += count
+	enemy_count_changed.emit(alive_enemies.size(), total_spawned)
 
 	for i in count:
 		if state != State.SPAWNING:
 			return
 
-		var scene: PackedScene = enemy_scenes_for_wave.pick_random()
+		var scene: PackedScene = enemy_scenes_for_segment.pick_random()
 
 		_spawn_regular_or_elite_enemy(
 			scene,
-			float(wave_data.health_mult),
-			float(wave_data.damage_mult),
-			float(wave_data.speed_mult),
-			float(wave_data.gold_mult)
+			float(segment_data.health_mult),
+			float(segment_data.damage_mult),
+			float(segment_data.speed_mult),
+			float(segment_data.gold_mult)
 		)
 
 		if dynamic_stagger > 0.0 and i < count - 1:
 			await get_tree().create_timer(dynamic_stagger).timeout
 
-	if bool(wave_data.is_boss):
-		await _spawn_boss_enemy(wave_data, dynamic_stagger)
+	state = State.CHAPTER_ACTIVE
+
+
+func _spawn_boss_segment(wave_num: int) -> void:
+	if boss_scenes.is_empty():
+		push_warning("WaveManager: boss_scenes is empty; chapter has no boss.")
+		boss_spawned_this_chapter = true
+		return
+
+	state = State.SPAWNING
+	boss_spawned_this_chapter = true
+	boss_wave_started.emit(wave_num)
+	chapter_progress_changed.emit(_get_chapter_progress())
+
+	var boss_data: Dictionary = _build_segment_data(wave_num, true)
+	var boss_mult: float = boss_health_mult
+
+	if current_chapter == 1:
+		boss_mult = first_boss_health_mult
+
+	total_spawned += 1
+	enemy_count_changed.emit(alive_enemies.size(), total_spawned)
+
+	_spawn_enemy(
+		boss_scenes.pick_random(),
+		float(boss_data.health_mult) * boss_mult,
+		float(boss_data.damage_mult) * boss_damage_mult,
+		float(boss_data.speed_mult) * boss_speed_mult,
+		float(boss_data.gold_mult),
+		true,
+		false
+	)
+
+	state = State.CHAPTER_ACTIVE
 
 
 func _get_dynamic_spawn_stagger(enemy_count: int) -> float:
@@ -375,7 +489,7 @@ func _spawn_regular_or_elite_enemy(
 	var is_elite: bool = bool(spawn_data.is_elite)
 
 	if is_elite:
-		elites_spawned_this_wave += 1
+		elites_spawned_this_chapter += 1
 		health_mult *= elite_health_mult
 		damage_mult *= elite_damage_mult
 		speed_mult *= elite_speed_mult
@@ -389,24 +503,6 @@ func _spawn_regular_or_elite_enemy(
 		gold_mult,
 		false,
 		is_elite
-	)
-
-
-func _spawn_boss_enemy(wave_data: Dictionary, dynamic_stagger: float) -> void:
-	if boss_scenes.is_empty():
-		return
-
-	if dynamic_stagger > 0.0:
-		await get_tree().create_timer(dynamic_stagger * 2.0).timeout
-
-	_spawn_enemy(
-		boss_scenes.pick_random(),
-		float(wave_data.health_mult) * boss_health_mult,
-		float(wave_data.damage_mult) * boss_damage_mult,
-		float(wave_data.speed_mult) * boss_speed_mult,
-		float(wave_data.gold_mult),
-		true,
-		false
 	)
 
 
@@ -470,10 +566,10 @@ func _can_spawn_elite() -> bool:
 	if elite_scenes.is_empty():
 		return false
 
-	if elites_spawned_this_wave >= max_elites_per_wave:
+	if elites_spawned_this_chapter >= max_elites_per_chapter:
 		return false
 
-	if _is_boss_wave(current_wave):
+	if boss_spawned_this_chapter:
 		return false
 
 	return true
@@ -488,6 +584,9 @@ func _get_elite_chance(wave_num: int) -> float:
 		elite_max_chance
 	)
 
+# ══════════════════════════════════════════════════════════════════════
+# ENEMY SETUP / SCALING
+# ══════════════════════════════════════════════════════════════════════
 
 func _apply_spawn_setup(enemy: Node2D) -> void:
 	var players := get_tree().get_nodes_in_group("player")
@@ -614,5 +713,4 @@ func _on_enemy_died(enemy: Node2D) -> void:
 	alive_enemies.erase(enemy)
 	enemy_count_changed.emit(alive_enemies.size(), total_spawned)
 
-	if alive_enemies.is_empty() and state == State.WAVE_ACTIVE:
-		_on_wave_cleared()
+	_finish_chapter_if_ready()

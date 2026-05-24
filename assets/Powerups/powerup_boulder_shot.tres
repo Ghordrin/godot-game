@@ -8,5 +8,6 @@ id = "boulder_shot"
 display_name = "Boulder Shot"
 description = "Fires a massive slow projectile that crushes through all enemies. Each rank increases size and damage."
 rarity = 2
+category = 2
 max_stacks = 1
 projectile_type = 2

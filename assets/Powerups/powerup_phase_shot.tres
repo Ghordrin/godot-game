@@ -8,4 +8,5 @@ id = "phase_shot"
 display_name = "Phase Shot"
 description = "Projectiles pass through enemies. Each rank increases how many enemies are pierced."
 rarity = 1
+category = 2
 projectile_type = 1

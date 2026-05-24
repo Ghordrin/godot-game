@@ -8,5 +8,6 @@ id = "homing_shot"
 display_name = "Homing Shot"
 description = "Projectiles curve toward the nearest enemy. Each rank increases tracking strength."
 rarity = 2
+category = 2
 max_stacks = 1
 projectile_type = 5

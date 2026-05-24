@@ -77,26 +77,21 @@ func _get_combination_hint(powerup: PowerUpData) -> String:
 	if powerup.element_type == PowerUpData.ElementType.NONE:
 		return ""
 
-	var equipped_elements: Array[int] = _get_equipped_element_types()
+	var active_elements: Array[int] = _get_active_element_types_in_order()
 
-	if equipped_elements.has(powerup.element_type):
+	# Ranking up an already owned element should not show a new combo unlock.
+	if active_elements.has(powerup.element_type):
 		return ""
 
-	var combo_names: Array[String] = []
+	var preview_elements: Array[int] = active_elements.duplicate()
+	preview_elements.append(powerup.element_type)
 
-	for equipped_element in equipped_elements:
-		var combo_name: String = _get_combo_name(equipped_element, powerup.element_type)
+	var combo_name: String = _get_new_combo_created_by_last_element(active_elements, preview_elements)
 
-		if combo_name != "":
-			combo_names.append(combo_name)
-
-	if combo_names.is_empty():
-		return ""
-
-	return "\n".join(combo_names)
+	return combo_name
 
 
-func _get_equipped_element_types() -> Array[int]:
+func _get_active_element_types_in_order() -> Array[int]:
 	var result: Array[int] = []
 
 	for entry in PlayerInventory.get_equipped_powerups_with_ranks():
@@ -105,16 +100,61 @@ func _get_equipped_element_types() -> Array[int]:
 
 		var powerup: PowerUpData = entry.powerup
 
-		if powerup == null:
-			continue
+		_add_element_if_valid(result, powerup)
 
-		if powerup.element_type == PowerUpData.ElementType.NONE:
-			continue
-
-		if not result.has(powerup.element_type):
-			result.append(powerup.element_type)
+	for powerup in PlayerInventory.get_wave_temporary_powerups():
+		_add_element_if_valid(result, powerup)
 
 	return result
+
+
+func _add_element_if_valid(result: Array[int], powerup: PowerUpData) -> void:
+	if powerup == null:
+		return
+
+	if not "element_type" in powerup:
+		return
+
+	if powerup.element_type == PowerUpData.ElementType.NONE:
+		return
+
+	if result.has(powerup.element_type):
+		return
+
+	result.append(powerup.element_type)
+
+
+func _get_new_combo_created_by_last_element(
+	old_elements: Array[int],
+	preview_elements: Array[int]
+) -> String:
+	var old_combos: Array[String] = _build_combo_names_from_order(old_elements)
+	var preview_combos: Array[String] = _build_combo_names_from_order(preview_elements)
+
+	for combo_name in preview_combos:
+		if not old_combos.has(combo_name):
+			return combo_name
+
+	return ""
+
+
+func _build_combo_names_from_order(elements: Array[int]) -> Array[String]:
+	var remaining: Array[int] = elements.duplicate()
+	var combos: Array[String] = []
+
+	while remaining.size() >= 2:
+		var first: int = remaining[0]
+		var second: int = remaining[1]
+		var combo_name: String = _get_combo_name(first, second)
+
+		if combo_name == "":
+			break
+
+		combos.append(combo_name)
+		remaining.remove_at(1)
+		remaining.remove_at(0)
+
+	return combos
 
 
 func _get_combo_name(a: int, b: int) -> String:

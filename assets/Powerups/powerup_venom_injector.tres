@@ -8,6 +8,7 @@ id = "venom_injector"
 display_name = "Venom Injector"
 description = "Projectiles apply ramping poison that grows stronger the longer it is active. Devastating against high health targets."
 rarity = 1
+category = 1
 modifier_type = 1
 amount = 0.3
 element_type = 4

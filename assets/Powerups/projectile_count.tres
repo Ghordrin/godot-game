@@ -6,6 +6,7 @@
 script = ExtResource("1_t1hb3")
 id = "multishot"
 display_name = "Multishot"
+category = 2
 stat_to_modify = "projectile_count"
 amount = 1.0
 metadata/_custom_type_script = "uid://c6rwp657h3iie"

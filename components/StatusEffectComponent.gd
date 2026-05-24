@@ -2,6 +2,8 @@
 class_name StatusEffectComponent
 extends Node
 
+const GroundDamageZoneScene := preload("res://Data/Damage/AreaEffects/GroundDamageZone.gd")
+
 signal effect_applied(type: EffectType)
 signal effect_expired(type: EffectType)
 
@@ -29,7 +31,8 @@ const BURN_DOT_MULT: float = 0.18
 const BURN_DURATION: float = 3.0
 const BURN_TICK_RATE: float = 0.5
 
-const SHOCK_DOT_MULT: float = 0.045
+const SHOCK_DOT_MULT: float = 0.06
+const SHOCK_MIN_DOT_DAMAGE: float = 1.0
 const SHOCK_DURATION: float = 2.0
 const SHOCK_TICK_RATE: float = 0.2
 
@@ -49,7 +52,12 @@ var active_effects: Array[Dictionary] = []
 var _parent: Node2D = null
 var _sprite: CanvasItem = null
 var _health_comp: HealthComponent = null
+
 var _original_speed: float = -1.0
+var _original_projectile_speed: float = -1.0
+var _original_attack_projectile_speed: float = -1.0
+var _original_stats_projectile_speed: float = -1.0
+
 var _original_color: Color = Color.WHITE
 var _contagion_timer: Timer = null
 var _pulse_tween: Tween = null
@@ -73,6 +81,17 @@ func _ready() -> void:
 
 	if "move_speed" in _parent:
 		_original_speed = float(_parent.get("move_speed"))
+
+	if "projectile_speed" in _parent:
+		_original_projectile_speed = float(_parent.get("projectile_speed"))
+
+	if "attack_projectile_speed" in _parent:
+		_original_attack_projectile_speed = float(_parent.get("attack_projectile_speed"))
+
+	var stats := _parent.get_node_or_null("StatsComponent") as Node
+
+	if stats != null and "projectile_speed" in stats:
+		_original_stats_projectile_speed = float(stats.get("projectile_speed"))
 
 	if _sprite != null:
 		_original_color = _sprite.modulate
@@ -103,14 +122,17 @@ func _process(delta: float) -> void:
 
 	_update_tint()
 
-# ── Public API ─────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
+# PUBLIC API
+# ══════════════════════════════════════════════════════════════════════
 
 func apply_burn_from_element(element_damage: float) -> void:
 	apply_burn(element_damage * BURN_DOT_MULT, BURN_DURATION, BURN_TICK_RATE)
 
 
 func apply_shock_from_element(element_damage: float) -> void:
-	apply_shock(element_damage * SHOCK_DOT_MULT, SHOCK_DURATION, SHOCK_TICK_RATE)
+	var shock_damage: float = maxf(element_damage * SHOCK_DOT_MULT, SHOCK_MIN_DOT_DAMAGE)
+	apply_shock(shock_damage, SHOCK_DURATION, SHOCK_TICK_RATE)
 
 
 func apply_poison_from_element(element_damage: float) -> void:
@@ -221,6 +243,8 @@ func clear_all() -> void:
 	active_effects.clear()
 	immune = false
 	_stop_contagion_timer()
+	_restore_movement_speed(1.0)
+	_restore_projectile_speed(1.0)
 	_update_tint()
 
 
@@ -229,7 +253,9 @@ func on_enemy_death() -> void:
 		if has_effect(EffectType.BURN) and has_effect(EffectType.SLOW):
 			_trigger_thermal_shock_explosion()
 
-# ── Internal ────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
+# INTERNAL EFFECT MANAGEMENT
+# ══════════════════════════════════════════════════════════════════════
 
 func _apply(type: EffectType, data: Dictionary) -> void:
 	for fx: Dictionary in active_effects:
@@ -239,7 +265,6 @@ func _apply(type: EffectType, data: Dictionary) -> void:
 		match type:
 			EffectType.POISON:
 				_refresh_poison(fx, data)
-
 			_:
 				_refresh_regular_effect(fx, data)
 
@@ -303,7 +328,8 @@ func _refresh_poison(fx: Dictionary, data: Dictionary) -> void:
 func _on_applied(fx: Dictionary) -> void:
 	match int(fx["type"]):
 		EffectType.SLOW:
-			_set_speed_multiplier(1.0 - float(fx["slow_percent"]))
+			var multiplier: float = 1.0 - float(fx["slow_percent"])
+			_set_speed_multiplier(multiplier)
 
 		EffectType.STUN:
 			_set_speed_multiplier(0.0)
@@ -385,6 +411,235 @@ func _deal_damage(amount: float, damage_type: String = "physical") -> void:
 		)
 
 	DamageMeter.record(amount, damage_type)
+
+# ══════════════════════════════════════════════════════════════════════
+# MOVEMENT / PROJECTILE SLOW
+# ══════════════════════════════════════════════════════════════════════
+
+func _set_speed_multiplier(multiplier: float) -> void:
+	if _parent == null:
+		return
+
+	if "move_speed" in _parent:
+		if _original_speed < 0.0:
+			_original_speed = float(_parent.get("move_speed"))
+
+		_parent.set("move_speed", _original_speed * multiplier)
+
+	_set_projectile_speed_multiplier(multiplier)
+
+
+func _set_projectile_speed_multiplier(multiplier: float) -> void:
+	if _parent == null:
+		return
+
+	if "projectile_speed" in _parent:
+		if _original_projectile_speed < 0.0:
+			_original_projectile_speed = float(_parent.get("projectile_speed"))
+
+		_parent.set("projectile_speed", _original_projectile_speed * multiplier)
+
+	if "attack_projectile_speed" in _parent:
+		if _original_attack_projectile_speed < 0.0:
+			_original_attack_projectile_speed = float(_parent.get("attack_projectile_speed"))
+
+		_parent.set("attack_projectile_speed", _original_attack_projectile_speed * multiplier)
+
+	var stats := _parent.get_node_or_null("StatsComponent") as Node
+
+	if stats != null and "projectile_speed" in stats:
+		if _original_stats_projectile_speed < 0.0:
+			_original_stats_projectile_speed = float(stats.get("projectile_speed"))
+
+		stats.set("projectile_speed", _original_stats_projectile_speed * multiplier)
+
+
+func _restore_speed() -> void:
+	if _parent == null:
+		return
+
+	for fx: Dictionary in active_effects:
+		if int(fx["type"]) == EffectType.STUN or int(fx["type"]) == EffectType.CRYSTALLIZED:
+			_restore_movement_speed(0.0)
+			_restore_projectile_speed(0.0)
+			return
+
+		if int(fx["type"]) == EffectType.SLOW:
+			var multiplier: float = 1.0 - float(fx["slow_percent"])
+			_restore_movement_speed(multiplier)
+			_restore_projectile_speed(multiplier)
+			return
+
+	_restore_movement_speed(1.0)
+	_restore_projectile_speed(1.0)
+
+
+func _restore_movement_speed(multiplier: float) -> void:
+	if _parent == null:
+		return
+
+	if not "move_speed" in _parent:
+		return
+
+	if _original_speed < 0.0:
+		return
+
+	_parent.set("move_speed", _original_speed * multiplier)
+
+
+func _restore_projectile_speed(multiplier: float) -> void:
+	if _parent == null:
+		return
+
+	if "projectile_speed" in _parent and _original_projectile_speed >= 0.0:
+		_parent.set("projectile_speed", _original_projectile_speed * multiplier)
+
+	if "attack_projectile_speed" in _parent and _original_attack_projectile_speed >= 0.0:
+		_parent.set("attack_projectile_speed", _original_attack_projectile_speed * multiplier)
+
+	var stats := _parent.get_node_or_null("StatsComponent") as Node
+
+	if stats != null and "projectile_speed" in stats and _original_stats_projectile_speed >= 0.0:
+		stats.set("projectile_speed", _original_stats_projectile_speed * multiplier)
+
+# ══════════════════════════════════════════════════════════════════════
+# SPECIAL EFFECTS / COMBOS
+# ══════════════════════════════════════════════════════════════════════
+
+func apply_combo_effect(damage_type: String, amount: float) -> void:
+	match damage_type:
+		"thermal":
+			apply_thermal(amount)
+		"plasma":
+			apply_plasma(amount)
+		"corrosive":
+			apply_corrosive(amount)
+		"magnetic":
+			apply_magnetic(amount)
+		"viral":
+			apply_viral(VIRAL_DURATION, VIRAL_DOT_BONUS)
+		"neurotoxin":
+			apply_contagion(amount, 1.5, 8.0)
+
+
+func apply_thermal(base_damage: float) -> void:
+	var burst_damage: float = base_damage * 0.25
+	var burn_damage_per_tick: float = base_damage * 0.30
+	var patch_damage_per_tick: float = base_damage * 0.12
+
+	_deal_damage(burst_damage, "fire")
+	apply_burn(burn_damage_per_tick, 4.0, 0.5)
+
+	var armor: ArmorComponent = get_parent().get_node_or_null("ArmorComponent") as ArmorComponent
+
+	if is_instance_valid(armor):
+		armor.erode(armor.current_armor * 0.20)
+
+	_spawn_ground_damage_zone(
+		_parent.global_position,
+		75.0,
+		4.0,
+		0.5,
+		patch_damage_per_tick,
+		"fire",
+		Color(1.0, 0.35, 0.08, 0.75),
+		true
+	)
+
+	_spawn_combo_visual(Color(1.0, 0.50, 0.12), 75.0)
+
+
+func apply_plasma(base_damage: float) -> void:
+	const PLASMA_RADIUS: float = 90.0
+
+	_spawn_combo_visual(Color(0.9, 0.20, 1.0), PLASMA_RADIUS)
+
+	if _parent == null:
+		return
+
+	for enemy: Node in get_tree().get_nodes_in_group("enemies"):
+		if enemy == _parent or not is_instance_valid(enemy):
+			continue
+
+		var enemy_2d: Node2D = enemy as Node2D
+
+		if enemy_2d == null:
+			continue
+
+		var dist: float = _parent.global_position.distance_to(enemy_2d.global_position)
+
+		if dist > PLASMA_RADIUS:
+			continue
+
+		var falloff: float = 1.0 - (dist / PLASMA_RADIUS) * 0.55
+		var health_component := enemy.get_node_or_null("HealthComponent") as HealthComponent
+
+		if is_instance_valid(health_component):
+			health_component.take_damage(base_damage * falloff * 0.6, "combo")
+
+	_spawn_ground_damage_zone(
+		_parent.global_position,
+		90.0,
+		2.5,
+		0.25,
+		base_damage * 0.06,
+		"combo",
+		Color(0.75, 0.20, 1.0, 0.65),
+		false
+	)
+
+
+func apply_corrosive(base_damage: float) -> void:
+	var armor: ArmorComponent = get_parent().get_node_or_null("ArmorComponent") as ArmorComponent
+
+	if is_instance_valid(armor):
+		armor.erode(armor.current_armor * 0.15)
+
+	apply_poison(base_damage * 0.15, 3.0, 0.75)
+	_spawn_combo_visual(Color(0.60, 1.0, 0.08), 50.0)
+
+
+func apply_magnetic(base_damage: float) -> void:
+	var shield: ShieldComponent = get_parent().get_node_or_null("ShieldComponent") as ShieldComponent
+
+	if is_instance_valid(shield):
+		shield.absorb(base_damage * 2.0)
+	else:
+		apply_slow(0.30, 1.5)
+
+	_spawn_combo_visual(Color(0.20, 0.80, 1.0), 55.0)
+
+
+func _spawn_ground_damage_zone(
+	position: Vector2,
+	radius: float,
+	duration: float,
+	tick_rate: float,
+	damage_per_tick: float,
+	damage_type: String,
+	color: Color,
+	apply_burn_on_tick: bool = false
+) -> void:
+	if _parent == null or not _parent.is_inside_tree():
+		return
+
+	var zone := GroundDamageZoneScene.new() as GroundDamageZone
+
+	if zone == null:
+		return
+
+	zone.configure(
+		radius,
+		duration,
+		tick_rate,
+		damage_per_tick,
+		damage_type,
+		color,
+		apply_burn_on_tick
+	)
+
+	zone.global_position = position
+	get_tree().current_scene.add_child(zone)
 
 
 func _start_crystallize_pulse() -> void:
@@ -545,32 +800,9 @@ func _remove_effect_type(type: EffectType) -> void:
 			active_effects.remove_at(i)
 			return
 
-
-func _set_speed_multiplier(multiplier: float) -> void:
-	if _parent == null or not "move_speed" in _parent:
-		return
-
-	if _original_speed < 0.0:
-		_original_speed = float(_parent.get("move_speed"))
-
-	_parent.set("move_speed", _original_speed * multiplier)
-
-
-func _restore_speed() -> void:
-	if _parent == null or not "move_speed" in _parent or _original_speed < 0.0:
-		return
-
-	for fx: Dictionary in active_effects:
-		if int(fx["type"]) == EffectType.STUN or int(fx["type"]) == EffectType.CRYSTALLIZED:
-			_parent.set("move_speed", 0.0)
-			return
-
-		if int(fx["type"]) == EffectType.SLOW:
-			_parent.set("move_speed", _original_speed * (1.0 - float(fx["slow_percent"])))
-			return
-
-	_parent.set("move_speed", _original_speed)
-
+# ══════════════════════════════════════════════════════════════════════
+# VISUALS
+# ══════════════════════════════════════════════════════════════════════
 
 func _update_tint() -> void:
 	if _sprite == null:
@@ -623,91 +855,76 @@ func _kill_pulse_tween() -> void:
 
 	_pulse_tween = null
 
-# ── Combo reactions ────────────────────────────────────────────────────
-
-func apply_combo_effect(damage_type: String, amount: float) -> void:
-	match damage_type:
-		"thermal":
-			apply_thermal(amount)
-		"plasma":
-			apply_plasma(amount)
-		"corrosive":
-			apply_corrosive(amount)
-		"magnetic":
-			apply_magnetic(amount)
-		"viral":
-			apply_viral(VIRAL_DURATION, VIRAL_DOT_BONUS)
-		"neurotoxin":
-			apply_contagion(amount, 1.5, 8.0)
-
-
-func apply_thermal(base_damage: float) -> void:
-	apply_burn(base_damage * 0.25, 4.0, 0.5)
-
-	var armor: ArmorComponent = get_parent().get_node_or_null("ArmorComponent") as ArmorComponent
-
-	if is_instance_valid(armor):
-		armor.erode(armor.current_armor * 0.20)
-
-	_spawn_combo_visual(Color(1.0, 0.50, 0.12), 60.0)
-
-
-func apply_plasma(base_damage: float) -> void:
-	const PLASMA_RADIUS: float = 90.0
-
-	_spawn_combo_visual(Color(0.9, 0.20, 1.0), PLASMA_RADIUS)
-
-	if _parent == null:
-		return
-
-	for enemy: Node in get_tree().get_nodes_in_group("enemies"):
-		if enemy == _parent or not is_instance_valid(enemy):
-			continue
-
-		var enemy_2d: Node2D = enemy as Node2D
-
-		if enemy_2d == null:
-			continue
-
-		var dist: float = _parent.global_position.distance_to(enemy_2d.global_position)
-
-		if dist > PLASMA_RADIUS:
-			continue
-
-		var falloff: float = 1.0 - (dist / PLASMA_RADIUS) * 0.55
-		var hc: HealthComponent = enemy.get_node_or_null("HealthComponent") as HealthComponent
-
-		if is_instance_valid(hc):
-			hc.take_damage(base_damage * falloff * 0.6, "combo")
-
-
-func apply_corrosive(base_damage: float) -> void:
-	var armor: ArmorComponent = get_parent().get_node_or_null("ArmorComponent") as ArmorComponent
-
-	if is_instance_valid(armor):
-		armor.erode(armor.current_armor * 0.15)
-
-	apply_poison(base_damage * 0.15, 3.0, 0.75)
-	_spawn_combo_visual(Color(0.60, 1.0, 0.08), 50.0)
-
-
-func apply_magnetic(base_damage: float) -> void:
-	var shield: ShieldComponent = get_parent().get_node_or_null("ShieldComponent") as ShieldComponent
-
-	if is_instance_valid(shield):
-		shield.absorb(base_damage * 2.0)
-	else:
-		apply_slow(0.30, 1.5)
-
-	_spawn_combo_visual(Color(0.20, 0.80, 1.0), 55.0)
-
 
 func _spawn_combo_visual(color: Color, radius: float) -> void:
 	if _parent == null or not _parent.is_inside_tree():
 		return
 
-	var ring: ComboRing = ComboRing.new()
+	var ring := _ComboRing.new()
 	ring.ring_color = color
 	ring.max_radius = radius
 	ring.global_position = _parent.global_position
 	get_tree().current_scene.add_child(ring)
+
+
+class _ComboRing extends Node2D:
+	var ring_color: Color = Color.WHITE
+	var max_radius: float = 64.0
+	var _radius: float = 0.0
+	var _alpha: float = 0.85
+
+	func _ready() -> void:
+		z_index = 12
+
+		var tween: Tween = create_tween().set_parallel(true)
+
+		tween.tween_method(
+			func(radius: float) -> void:
+				_radius = radius
+				queue_redraw(),
+			0.0,
+			max_radius,
+			0.35
+		)
+
+		tween.tween_method(
+			func(alpha: float) -> void:
+				_alpha = alpha
+				queue_redraw(),
+			0.85,
+			0.0,
+			0.35
+		)
+
+		tween.chain().tween_callback(queue_free)
+
+
+	func _draw() -> void:
+		if _radius <= 0.0:
+			return
+
+		draw_circle(
+			Vector2.ZERO,
+			_radius,
+			Color(ring_color.r, ring_color.g, ring_color.b, _alpha * 0.12)
+		)
+
+		draw_arc(
+			Vector2.ZERO,
+			_radius,
+			0.0,
+			TAU,
+			48,
+			Color(ring_color.r, ring_color.g, ring_color.b, _alpha),
+			3.5
+		)
+
+		draw_arc(
+			Vector2.ZERO,
+			_radius * 0.5,
+			0.0,
+			TAU,
+			32,
+			Color(ring_color.r, ring_color.g, ring_color.b, _alpha * 0.5),
+			1.5
+		)

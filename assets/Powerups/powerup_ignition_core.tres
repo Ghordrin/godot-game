@@ -8,6 +8,7 @@ id = "ignition_core"
 display_name = "Ignition Core"
 description = "Projectiles leave burning ground. Combines with other elements for special effects"
 rarity = 1
+category = 1
 modifier_type = 1
 amount = 0.3
 element_type = 1

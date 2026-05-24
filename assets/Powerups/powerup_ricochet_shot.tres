@@ -8,5 +8,6 @@ id = "ricochet_shot"
 display_name = "Ricochet Shot"
 description = "Projectiles bounce off walls and terrain. Each rank adds one additional bounce."
 rarity = 2
+category = 2
 max_stacks = 1
 projectile_type = 3
