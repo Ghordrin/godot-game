@@ -46,21 +46,59 @@ const POISON_MAX_DURATION: float = 12.0
 const VIRAL_DURATION: float = 5.0
 const VIRAL_DOT_BONUS: float = 0.75
 
+# These variables get multiplied DOWN by slow.
+const SPEED_PROPERTIES: Array[String] = [
+	"move_speed",
+	"speed",
+	"projectile_speed",
+	"attack_projectile_speed",
+	"burst_speed",
+	"rush_trail_speed",
+	"rush_impact_speed",
+	"stomp_base_speed",
+	"stomp_speed_step",
+	"stomp_deferred_speed",
+	"spiral_speed",
+]
+
+# These variables get multiplied UP by slow because longer cooldown/interval = slower attacks.
+const INTERVAL_PROPERTIES: Array[String] = [
+	"attack_cooldown",
+	"attack_interval",
+	"fire_interval",
+	"shoot_interval",
+	"shoot_cooldown",
+	"stomp_delay",
+	"stomp_fire_interval",
+	"spiral_interval",
+	"rush_trail_interval",
+]
+
+const STATS_SPEED_PROPERTIES: Array[String] = [
+	"projectile_speed",
+	"attack_projectile_speed",
+]
+
+const STATS_INTERVAL_PROPERTIES: Array[String] = [
+	"attack_cooldown",
+	"attack_interval",
+	"fire_interval",
+	"shoot_interval",
+	"shoot_cooldown",
+]
+
 var immune: bool = false
 var active_effects: Array[Dictionary] = []
 
 var _parent: Node2D = null
 var _sprite: CanvasItem = null
 var _health_comp: HealthComponent = null
-
-var _original_speed: float = -1.0
-var _original_projectile_speed: float = -1.0
-var _original_attack_projectile_speed: float = -1.0
-var _original_stats_projectile_speed: float = -1.0
-
 var _original_color: Color = Color.WHITE
 var _contagion_timer: Timer = null
 var _pulse_tween: Tween = null
+
+var _base_parent_values: Dictionary = {}
+var _base_stats_values: Dictionary = {}
 
 
 func _ready() -> void:
@@ -79,22 +117,10 @@ func _ready() -> void:
 
 	_health_comp = _parent.get_node_or_null("HealthComponent") as HealthComponent
 
-	if "move_speed" in _parent:
-		_original_speed = float(_parent.get("move_speed"))
-
-	if "projectile_speed" in _parent:
-		_original_projectile_speed = float(_parent.get("projectile_speed"))
-
-	if "attack_projectile_speed" in _parent:
-		_original_attack_projectile_speed = float(_parent.get("attack_projectile_speed"))
-
-	var stats := _parent.get_node_or_null("StatsComponent") as Node
-
-	if stats != null and "projectile_speed" in stats:
-		_original_stats_projectile_speed = float(stats.get("projectile_speed"))
-
 	if _sprite != null:
 		_original_color = _sprite.modulate
+
+	_cache_scalable_values()
 
 
 func _process(delta: float) -> void:
@@ -121,6 +147,7 @@ func _process(delta: float) -> void:
 			_on_expired(fx)
 
 	_update_tint()
+
 
 # ══════════════════════════════════════════════════════════════════════
 # PUBLIC API
@@ -243,8 +270,7 @@ func clear_all() -> void:
 	active_effects.clear()
 	immune = false
 	_stop_contagion_timer()
-	_restore_movement_speed(1.0)
-	_restore_projectile_speed(1.0)
+	_apply_slow_multiplier(1.0)
 	_update_tint()
 
 
@@ -252,6 +278,7 @@ func on_enemy_death() -> void:
 	if PlayerInventory.active_combinations.has(PlayerInventory.ElementalCombo.THERMAL):
 		if has_effect(EffectType.BURN) and has_effect(EffectType.SLOW):
 			_trigger_thermal_shock_explosion()
+
 
 # ══════════════════════════════════════════════════════════════════════
 # INTERNAL EFFECT MANAGEMENT
@@ -268,6 +295,7 @@ func _apply(type: EffectType, data: Dictionary) -> void:
 			_:
 				_refresh_regular_effect(fx, data)
 
+		_recalculate_slow_state()
 		return
 
 	var fx: Dictionary = {
@@ -327,15 +355,10 @@ func _refresh_poison(fx: Dictionary, data: Dictionary) -> void:
 
 func _on_applied(fx: Dictionary) -> void:
 	match int(fx["type"]):
-		EffectType.SLOW:
-			var multiplier: float = 1.0 - float(fx["slow_percent"])
-			_set_speed_multiplier(multiplier)
-
-		EffectType.STUN:
-			_set_speed_multiplier(0.0)
+		EffectType.SLOW, EffectType.STUN, EffectType.CRYSTALLIZED:
+			_recalculate_slow_state()
 
 		EffectType.CRYSTALLIZED:
-			_set_speed_multiplier(0.0)
 			immune = true
 
 
@@ -381,11 +404,11 @@ func _get_viral_dot_bonus() -> float:
 func _on_expired(fx: Dictionary) -> void:
 	match int(fx["type"]):
 		EffectType.SLOW, EffectType.STUN:
-			_restore_speed()
+			_recalculate_slow_state()
 
 		EffectType.CRYSTALLIZED:
 			immune = false
-			_restore_speed()
+			_recalculate_slow_state()
 			_trigger_crystallize_shatter(float(fx["shatter_damage"]))
 
 		EffectType.CONTAGION:
@@ -412,95 +435,149 @@ func _deal_damage(amount: float, damage_type: String = "physical") -> void:
 
 	DamageMeter.record(amount, damage_type)
 
+
 # ══════════════════════════════════════════════════════════════════════
-# MOVEMENT / PROJECTILE SLOW
+# ICE SLOW SUPPORT: MOVEMENT, PROJECTILES, ATTACK SPEED
 # ══════════════════════════════════════════════════════════════════════
 
-func _set_speed_multiplier(multiplier: float) -> void:
+func _cache_scalable_values() -> void:
 	if _parent == null:
 		return
 
-	if "move_speed" in _parent:
-		if _original_speed < 0.0:
-			_original_speed = float(_parent.get("move_speed"))
+	for property_name in SPEED_PROPERTIES:
+		_cache_parent_property(property_name)
 
-		_parent.set("move_speed", _original_speed * multiplier)
-
-	_set_projectile_speed_multiplier(multiplier)
-
-
-func _set_projectile_speed_multiplier(multiplier: float) -> void:
-	if _parent == null:
-		return
-
-	if "projectile_speed" in _parent:
-		if _original_projectile_speed < 0.0:
-			_original_projectile_speed = float(_parent.get("projectile_speed"))
-
-		_parent.set("projectile_speed", _original_projectile_speed * multiplier)
-
-	if "attack_projectile_speed" in _parent:
-		if _original_attack_projectile_speed < 0.0:
-			_original_attack_projectile_speed = float(_parent.get("attack_projectile_speed"))
-
-		_parent.set("attack_projectile_speed", _original_attack_projectile_speed * multiplier)
+	for property_name in INTERVAL_PROPERTIES:
+		_cache_parent_property(property_name)
 
 	var stats := _parent.get_node_or_null("StatsComponent") as Node
 
-	if stats != null and "projectile_speed" in stats:
-		if _original_stats_projectile_speed < 0.0:
-			_original_stats_projectile_speed = float(stats.get("projectile_speed"))
+	if stats == null:
+		return
 
-		stats.set("projectile_speed", _original_stats_projectile_speed * multiplier)
+	for property_name in STATS_SPEED_PROPERTIES:
+		_cache_stats_property(stats, property_name)
+
+	for property_name in STATS_INTERVAL_PROPERTIES:
+		_cache_stats_property(stats, property_name)
 
 
-func _restore_speed() -> void:
+func _cache_parent_property(property_name: String) -> void:
 	if _parent == null:
 		return
+
+	if not property_name in _parent:
+		return
+
+	_base_parent_values[property_name] = float(_parent.get(property_name))
+
+
+func _cache_stats_property(stats: Node, property_name: String) -> void:
+	if stats == null:
+		return
+
+	if not property_name in stats:
+		return
+
+	_base_stats_values[property_name] = float(stats.get(property_name))
+
+
+func _recalculate_slow_state() -> void:
+	if _parent == null:
+		return
+
+	var multiplier: float = 1.0
 
 	for fx: Dictionary in active_effects:
-		if int(fx["type"]) == EffectType.STUN or int(fx["type"]) == EffectType.CRYSTALLIZED:
-			_restore_movement_speed(0.0)
-			_restore_projectile_speed(0.0)
-			return
+		match int(fx["type"]):
+			EffectType.STUN, EffectType.CRYSTALLIZED:
+				multiplier = 0.0
+				break
 
-		if int(fx["type"]) == EffectType.SLOW:
-			var multiplier: float = 1.0 - float(fx["slow_percent"])
-			_restore_movement_speed(multiplier)
-			_restore_projectile_speed(multiplier)
-			return
+			EffectType.SLOW:
+				var slow_percent: float = clampf(float(fx.get("slow_percent", 0.0)), 0.0, 0.9)
+				multiplier = minf(multiplier, 1.0 - slow_percent)
 
-	_restore_movement_speed(1.0)
-	_restore_projectile_speed(1.0)
+	_apply_slow_multiplier(multiplier)
 
 
-func _restore_movement_speed(multiplier: float) -> void:
+func _apply_slow_multiplier(multiplier: float) -> void:
+	_apply_parent_speed_properties(multiplier)
+	_apply_parent_interval_properties(multiplier)
+	_apply_stats_speed_properties(multiplier)
+	_apply_stats_interval_properties(multiplier)
+
+
+func _apply_parent_speed_properties(multiplier: float) -> void:
 	if _parent == null:
 		return
 
-	if not "move_speed" in _parent:
-		return
+	for property_name in SPEED_PROPERTIES:
+		if not _base_parent_values.has(property_name):
+			continue
 
-	if _original_speed < 0.0:
-		return
+		if not property_name in _parent:
+			continue
 
-	_parent.set("move_speed", _original_speed * multiplier)
+		_parent.set(property_name, float(_base_parent_values[property_name]) * multiplier)
 
 
-func _restore_projectile_speed(multiplier: float) -> void:
+func _apply_parent_interval_properties(multiplier: float) -> void:
 	if _parent == null:
 		return
 
-	if "projectile_speed" in _parent and _original_projectile_speed >= 0.0:
-		_parent.set("projectile_speed", _original_projectile_speed * multiplier)
+	var interval_multiplier := _get_interval_multiplier(multiplier)
 
-	if "attack_projectile_speed" in _parent and _original_attack_projectile_speed >= 0.0:
-		_parent.set("attack_projectile_speed", _original_attack_projectile_speed * multiplier)
+	for property_name in INTERVAL_PROPERTIES:
+		if not _base_parent_values.has(property_name):
+			continue
 
+		if not property_name in _parent:
+			continue
+
+		_parent.set(property_name, float(_base_parent_values[property_name]) * interval_multiplier)
+
+
+func _apply_stats_speed_properties(multiplier: float) -> void:
 	var stats := _parent.get_node_or_null("StatsComponent") as Node
 
-	if stats != null and "projectile_speed" in stats and _original_stats_projectile_speed >= 0.0:
-		stats.set("projectile_speed", _original_stats_projectile_speed * multiplier)
+	if stats == null:
+		return
+
+	for property_name in STATS_SPEED_PROPERTIES:
+		if not _base_stats_values.has(property_name):
+			continue
+
+		if not property_name in stats:
+			continue
+
+		stats.set(property_name, float(_base_stats_values[property_name]) * multiplier)
+
+
+func _apply_stats_interval_properties(multiplier: float) -> void:
+	var stats := _parent.get_node_or_null("StatsComponent") as Node
+
+	if stats == null:
+		return
+
+	var interval_multiplier := _get_interval_multiplier(multiplier)
+
+	for property_name in STATS_INTERVAL_PROPERTIES:
+		if not _base_stats_values.has(property_name):
+			continue
+
+		if not property_name in stats:
+			continue
+
+		stats.set(property_name, float(_base_stats_values[property_name]) * interval_multiplier)
+
+
+func _get_interval_multiplier(speed_multiplier: float) -> float:
+	if speed_multiplier <= 0.0:
+		return 999.0
+
+	return 1.0 / speed_multiplier
+
 
 # ══════════════════════════════════════════════════════════════════════
 # SPECIAL EFFECTS / COMBOS
@@ -799,6 +876,7 @@ func _remove_effect_type(type: EffectType) -> void:
 			_on_expired(active_effects[i])
 			active_effects.remove_at(i)
 			return
+
 
 # ══════════════════════════════════════════════════════════════════════
 # VISUALS
