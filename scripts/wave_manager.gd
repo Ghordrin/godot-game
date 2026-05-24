@@ -7,6 +7,7 @@ class_name WaveManager
 
 @export var shop_scene: PackedScene
 @export var loot_table: PowerUpTable
+@export var loot_item_scene: PackedScene
 @export var countdown_seconds: int = 3
 @export var start_delay_seconds: float = 3.0
 @export var between_chapter_delay_seconds: float = 2.0
@@ -14,6 +15,14 @@ class_name WaveManager
 
 var shop_ui: ShopUI = null
 var countdown_ui: CanvasLayer = null
+
+# ══════════════════════════════════════════════════════════════════════
+# TEMPORARY POWERUP DROP CONFIG
+# ══════════════════════════════════════════════════════════════════════
+
+@export_range(0.0, 1.0, 0.001) var regular_powerup_drop_chance: float = 0.003
+@export_range(0.0, 1.0, 0.001) var elite_powerup_drop_chance: float = 0.05
+@export_range(0.0, 1.0, 0.001) var boss_powerup_drop_chance: float = 1.0
 
 # ══════════════════════════════════════════════════════════════════════
 # CHAPTER CONFIG
@@ -118,6 +127,7 @@ var alive_enemies: Array[Node2D] = []
 var total_spawned: int = 0
 var elites_spawned_this_chapter: int = 0
 var boss_spawned_this_chapter: bool = false
+var chapter_spawn_flow_finished: bool = false
 
 # ══════════════════════════════════════════════════════════════════════
 # LIFECYCLE
@@ -183,6 +193,7 @@ func start_next_chapter() -> void:
 	current_segment = 0
 	elites_spawned_this_chapter = 0
 	boss_spawned_this_chapter = false
+	chapter_spawn_flow_finished = false
 
 	current_wave = _get_virtual_wave_for_segment(1)
 	PlayerInventory.current_wave = current_wave
@@ -240,11 +251,17 @@ func _run_chapter() -> void:
 
 	await _spawn_boss_segment(current_wave)
 
+	chapter_spawn_flow_finished = true
 	state = State.CHAPTER_ACTIVE
+
+	_finish_chapter_if_ready()
 
 
 func _finish_chapter_if_ready() -> void:
 	if state != State.CHAPTER_ACTIVE:
+		return
+
+	if not chapter_spawn_flow_finished:
 		return
 
 	if not alive_enemies.is_empty():
@@ -343,9 +360,6 @@ func _get_virtual_wave_for_segment(segment_index: int) -> int:
 func _get_virtual_wave_for_boss() -> int:
 	var chapter_start_wave: int = ((current_chapter - 1) * virtual_waves_per_chapter) + 1
 
-	# Boss used to inherit the final virtual wave.
-	# That made Chapter 1 bosses too spongey.
-	# This keeps boss progression one step behind the final segment.
 	return chapter_start_wave + maxi(0, virtual_waves_per_chapter - 2)
 
 
@@ -531,11 +545,34 @@ func _spawn_enemy(
 	_apply_spawn_setup(enemy)
 	_apply_enemy_scaling(enemy, health_mult, damage_mult, speed_mult, gold_mult)
 	_apply_enemy_visuals(enemy, is_boss, is_elite)
+	_apply_enemy_drop_context(enemy, is_boss, is_elite)
 
 	if is_elite:
 		_apply_elite_affixes(enemy)
 
 	_track_enemy(enemy)
+
+
+func _apply_enemy_drop_context(enemy: Node2D, is_boss: bool, is_elite: bool) -> void:
+	if not enemy.has_method("set_powerup_drop_context"):
+		return
+
+	var drop_chance: float = regular_powerup_drop_chance
+	var force_drop: bool = false
+
+	if is_boss:
+		drop_chance = boss_powerup_drop_chance
+		force_drop = boss_powerup_drop_chance >= 1.0
+	elif is_elite:
+		drop_chance = elite_powerup_drop_chance
+
+	enemy.set_powerup_drop_context(
+		loot_table,
+		loot_item_scene,
+		drop_chance,
+		force_drop,
+		true
+	)
 
 
 func _choose_regular_or_elite_scene(base_scene: PackedScene) -> Dictionary:

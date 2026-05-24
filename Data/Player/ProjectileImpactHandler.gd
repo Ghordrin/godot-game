@@ -1,12 +1,21 @@
 extends RefCounted
 class_name ProjectileImpactHandler
 
-const CHAIN_RADIUS: float = 150.0
-const CHAIN_DAMAGE_FALLOFF: float = 0.6
+# Lightning should feel like fast crowd clear.
+# Higher target count, slightly harsher damage falloff.
+const CHAIN_RADIUS: float = 230.0
+const CHAIN_DAMAGE_FALLOFF: float = 0.55
+const LIGHTNING_BASE_CHAINS: int = 3
+const LIGHTNING_CHAINS_PER_RANK: int = 1
+const LIGHTNING_MAX_CHAINS: int = 8
 
-const BOUNCE_RADIUS: float = 190.0
-const BOUNCE_DAMAGE_FALLOFF: float = 0.65
-
+# Ricochet should feel like heavier projectile bounces.
+# Fewer than "infinite", but reliable in dense waves.
+const BOUNCE_RADIUS: float = 280.0
+const BOUNCE_DAMAGE_FALLOFF: float = 0.70
+const RICOCHET_BASE_BOUNCES: int = 3
+const RICOCHET_BOUNCES_PER_RANK: int = 1
+const RICOCHET_MAX_BOUNCES: int = 10
 
 var projectile: Projectile
 var hit_tracker: Dictionary = {}
@@ -43,10 +52,10 @@ func handle_hit(target: Node) -> void:
 	_apply_packet_status_effects(enemy_root, status_component, packet)
 
 	if projectile.projectile_type == PowerUpData.ProjectileType.RICOCHET:
-		_apply_bouncing_shot(enemy_root, packet, _get_projectile_type_rank(PowerUpData.ProjectileType.RICOCHET))
+		_apply_bouncing_shot(enemy_root, packet, _get_ricochet_bounce_count())
 
 	if projectile.secondary_type == PowerUpData.ProjectileType.RICOCHET:
-		_apply_bouncing_shot(enemy_root, packet, _get_projectile_type_rank(PowerUpData.ProjectileType.RICOCHET))
+		_apply_bouncing_shot(enemy_root, packet, _get_ricochet_bounce_count())
 
 	if projectile.secondary_type == PowerUpData.ProjectileType.NOVA:
 		_apply_nova(enemy_root, packet)
@@ -152,7 +161,7 @@ func _apply_packet_status_effects(
 			"lightning":
 				status_component.apply_shock_from_element(amount)
 				status_component.apply_stun(0.20)
-				_chain_lightning(enemy_root, amount, 1)
+				_chain_lightning(enemy_root, amount, _get_lightning_chain_count())
 
 			"poison":
 				status_component.apply_poison_from_element(amount)
@@ -290,13 +299,7 @@ func _make_scaled_packet(source_packet: DamagePacket, scale: float) -> DamagePac
 
 
 func _get_projectile_type_rank(projectile_type: PowerUpData.ProjectileType) -> int:
-	var active_powerups: Array[Dictionary] = []
-
-	if PlayerInventory.has_method("get_active_damage_powerups_with_ranks"):
-		active_powerups = PlayerInventory.get_active_damage_powerups_with_ranks()
-	else:
-		active_powerups = PlayerInventory.get_equipped_powerups_with_ranks()
-
+	var active_powerups: Array[Dictionary] = _get_active_damage_powerups()
 	var highest_rank: int = 1
 
 	for entry: Dictionary in active_powerups:
@@ -316,11 +319,62 @@ func _get_projectile_type_rank(projectile_type: PowerUpData.ProjectileType) -> i
 	return highest_rank
 
 
-func _chain_lightning(source_enemy: Node, element_pool: float, rank: int) -> void:
-	var current_damage: float = element_pool
-	var hit_enemies: Array = [source_enemy]
+func _get_element_rank(element_type: PowerUpData.ElementType) -> int:
+	var active_powerups: Array[Dictionary] = _get_active_damage_powerups()
+	var highest_rank: int = 0
 
-	for _i in rank:
+	for entry: Dictionary in active_powerups:
+		if not entry.has("powerup"):
+			continue
+
+		var powerup: PowerUpData = entry.powerup
+
+		if powerup == null:
+			continue
+
+		if powerup.element_type != element_type:
+			continue
+
+		highest_rank = maxi(highest_rank, int(entry.get("rank", 1)))
+
+	return highest_rank
+
+
+func _get_active_damage_powerups() -> Array[Dictionary]:
+	if PlayerInventory.has_method("get_active_damage_powerups_with_ranks"):
+		return PlayerInventory.get_active_damage_powerups_with_ranks()
+
+	return PlayerInventory.get_equipped_powerups_with_ranks()
+
+
+func _get_lightning_chain_count() -> int:
+	var lightning_rank: int = _get_element_rank(PowerUpData.ElementType.LIGHTNING)
+
+	if lightning_rank <= 0:
+		return 0
+
+	var count: int = LIGHTNING_BASE_CHAINS + max(0, lightning_rank - 1) * LIGHTNING_CHAINS_PER_RANK
+	return clampi(count, 0, LIGHTNING_MAX_CHAINS)
+
+
+func _get_ricochet_bounce_count() -> int:
+	var ricochet_rank: int = _get_projectile_type_rank(PowerUpData.ProjectileType.RICOCHET)
+
+	if ricochet_rank <= 0:
+		return 0
+
+	var count: int = RICOCHET_BASE_BOUNCES + max(0, ricochet_rank - 1) * RICOCHET_BOUNCES_PER_RANK
+	return clampi(count, 0, RICOCHET_MAX_BOUNCES)
+
+
+func _chain_lightning(source_enemy: Node, element_pool: float, chain_count: int) -> void:
+	if chain_count <= 0:
+		return
+
+	var current_damage: float = element_pool
+	var hit_enemies: Array[Node] = [source_enemy]
+
+	for _i in chain_count:
 		var last_hit: Node = hit_enemies.back()
 
 		if not is_instance_valid(last_hit):
@@ -333,7 +387,10 @@ func _chain_lightning(source_enemy: Node, element_pool: float, rank: int) -> voi
 		var nearest_dist: float = CHAIN_RADIUS
 
 		for enemy in projectile.get_tree().get_nodes_in_group("enemies"):
-			if enemy in hit_enemies or not is_instance_valid(enemy):
+			if enemy in hit_enemies:
+				continue
+
+			if not is_instance_valid(enemy):
 				continue
 
 			if not enemy is Node2D:
