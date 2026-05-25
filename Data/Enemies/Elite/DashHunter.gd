@@ -13,19 +13,22 @@ class_name DashHunter
 # CHAIN DASH ATTACK
 # ══════════════════════════════════════════════════════════════════════
 
-@export var dash_chain_count: int = 3
+@export var dash_chain_count: int = 2
 
-@export var dash_windup_time: float = 0.22
-@export var dash_relock_time: float = 0.16
-@export var dash_speed: float = 560.0
-@export var dash_distance: float = 300.0
+@export var dash_windup_time: float = 0.28
+@export var dash_relock_time: float = 0.28
+@export var dash_speed: float = 440.0
+@export var dash_distance: float = 260.0
 @export var dash_damage: float = 12.0
-@export var dash_cooldown: float = 1.35
+@export var dash_cooldown: float = 2.75
 @export var dash_hit_radius: float = 22.0
 @export var dash_overshoot_player: float = 56.0
 
+## Delay between dashes in the same chain. Keeps chained attacks readable.
+@export var dash_chain_pause_time: float = 0.16
+
 ## Small delay after the final dash before it resumes chasing.
-@export var recovery_time: float = 0.18
+@export var recovery_time: float = 0.28
 
 # ══════════════════════════════════════════════════════════════════════
 # TELEGRAPH
@@ -168,7 +171,7 @@ func _process_chasing(delta: float) -> void:
 		play_idle_animation()
 		return
 
-	dash_cooldown_timer -= delta
+	dash_cooldown_timer = maxf(dash_cooldown_timer - delta, 0.0)
 
 	var to_target: Vector2 = target.global_position - global_position
 	var distance: float = to_target.length()
@@ -198,6 +201,7 @@ func _start_dash_chain() -> void:
 		return
 
 	_attack_sequence_id += 1
+	dash_cooldown_timer = dash_cooldown
 	chain_dashes_remaining = max(1, dash_chain_count)
 	hit_targets_this_dash.clear()
 
@@ -271,15 +275,30 @@ func _finish_single_dash() -> void:
 	chain_dashes_remaining -= 1
 
 	if chain_dashes_remaining > 0:
-		_lock_on_then_dash(_attack_sequence_id, dash_relock_time, relock_telegraph_color)
+		_start_next_dash_after_pause(_attack_sequence_id)
 	else:
 		_end_dash_chain()
+
+
+func _start_next_dash_after_pause(sequence_id: int) -> void:
+	state = State.RECOVERING
+	velocity = Vector2.ZERO
+
+	await get_tree().create_timer(dash_chain_pause_time).timeout
+
+	if is_dying or health_component.is_dead:
+		return
+
+	if sequence_id != _attack_sequence_id:
+		return
+
+	_lock_on_then_dash(sequence_id, dash_relock_time, relock_telegraph_color)
 
 
 func _end_dash_chain() -> void:
 	state = State.RECOVERING
 	velocity = Vector2.ZERO
-	dash_cooldown_timer = dash_cooldown
+	dash_cooldown_timer = maxf(dash_cooldown_timer, dash_cooldown)
 
 	var sequence_id := _attack_sequence_id
 
