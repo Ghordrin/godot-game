@@ -21,6 +21,9 @@ PlayerInventory="*uid://c2sfawo1e6r3q"
 DamageMeter="*uid://cjhgktwh4v631"
 DamageNumberSpawner="*uid://bds8gbg4cd7cj"
 DebugFPSCounter="*res://scripts/debug_fps_counter.gd"
+EnemyRegistry="*uid://cm2l6qkbqlom3"
+CombatDebugLogger="*uid://bfp8chepokpjs"
+DeathQueue="*uid://dmkn2vbdvw0vs"
 
 [display]
 

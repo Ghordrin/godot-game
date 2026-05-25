@@ -19,6 +19,9 @@ var bounces_remaining: int = 0
 
 var homing_strength: float = 0.0
 var homing_range: float = 780.0
+var homing_retarget_interval: float = 0.15
+var homing_target: Node2D = null
+var homing_retarget_timer: float = 0.0
 
 var nova_radius: float = 115.0
 var nova_damage_ratio: float = 0.65
@@ -29,6 +32,7 @@ var secondary_rank: int = 1
 var sprite_frames_override: SpriteFrames = null
 
 var impact_handler: ProjectileImpactHandler = null
+var lifetime_remaining: float = 0.0
 
 # Boulder drop mode
 var is_boulder_drop: bool = false
@@ -41,6 +45,7 @@ var boulder_ground_shadow: Node2D = null
 
 func _ready() -> void:
 	impact_handler = ProjectileImpactHandler.new(self)
+	lifetime_remaining = lifetime
 
 	add_to_group("projectiles")
 	add_to_group("wave_cleanup")
@@ -50,13 +55,14 @@ func _ready() -> void:
 
 	play_projectile_animation()
 
-	await get_tree().create_timer(lifetime).timeout
-
-	if is_inside_tree():
-		queue_free()
-
 
 func _physics_process(delta: float) -> void:
+	lifetime_remaining -= delta
+
+	if lifetime_remaining <= 0.0:
+		queue_free()
+		return
+
 	if is_boulder_drop:
 		_process_boulder_drop(delta)
 		return
@@ -94,6 +100,7 @@ func setup_boulder_drop(target_position: Vector2, fall_height: float = 260.0) ->
 	rotation = 0.0
 	global_position = target_position + Vector2(0.0, -boulder_fall_height)
 	lifetime = 3.0
+	lifetime_remaining = lifetime
 
 	_create_boulder_shadow(target_position)
 
@@ -124,6 +131,8 @@ func apply_projectile_type(type: int, _rank: int = 1) -> void:
 		_:
 			pass
 
+	lifetime_remaining = lifetime
+
 
 func apply_secondary_type(type: int, _rank: int = 1) -> void:
 	secondary_type = type
@@ -150,6 +159,9 @@ func apply_secondary_type(type: int, _rank: int = 1) -> void:
 		PowerUpData.ProjectileType.HOMING:
 			homing_strength = maxf(homing_strength, 5.0)
 			homing_range = maxf(homing_range, 780.0)
+			homing_retarget_interval = 0.15
+			homing_retarget_timer = 0.0
+			homing_target = null
 
 		_:
 			pass
@@ -196,6 +208,9 @@ func _apply_nova() -> void:
 func _apply_homing() -> void:
 	homing_strength = 5.0
 	homing_range = 780.0
+	homing_retarget_interval = 0.15
+	homing_retarget_timer = 0.0
+	homing_target = null
 	lifetime = 6.0
 	speed *= 0.95
 
@@ -335,12 +350,16 @@ func _draw_miss_impact_ring() -> void:
 
 
 func _update_homing(delta: float) -> void:
-	var nearest := _find_best_homing_target()
+	homing_retarget_timer -= delta
 
-	if nearest == null:
+	if homing_retarget_timer <= 0.0 or not is_instance_valid(homing_target):
+		homing_retarget_timer = homing_retarget_interval
+		homing_target = _find_best_homing_target()
+
+	if homing_target == null:
 		return
 
-	var target_dir: Vector2 = global_position.direction_to(nearest.global_position)
+	var target_dir: Vector2 = global_position.direction_to(homing_target.global_position)
 
 	if target_dir == Vector2.ZERO:
 		return

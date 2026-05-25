@@ -1,5 +1,4 @@
 extends CanvasLayer
-class_name DebugFPSCounter
 
 @export var update_interval: float = 0.25
 @export var show_by_default: bool = true
