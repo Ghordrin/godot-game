@@ -34,7 +34,19 @@ var impact_handler: ProjectileImpactHandler = null
 var _base_speed: float = 450.0
 var _base_lifetime: float = 10.0
 var _base_sprite_scale: Vector2 = Vector2.ONE
+var _base_circle_radius: float = 0.0
+var _base_rect_size: Vector2 = Vector2.ZERO
 var _has_cached_base_values: bool = false
+
+# ── Boulder Drop State ────────────────────────────────────────────────
+
+var _boulder_drop_active: bool = false
+var _boulder_drop_target: Vector2 = Vector2.ZERO
+var _boulder_drop_start: Vector2 = Vector2.ZERO
+var _boulder_drop_height: float = 260.0
+var _boulder_drop_duration: float = 0.70
+var _boulder_drop_elapsed: float = 0.0
+var _boulder_shadow: Node2D = null
 
 
 func _ready() -> void:
@@ -57,6 +69,10 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _boulder_drop_active:
+		_update_boulder_drop(delta)
+		return
+
 	match projectile_type:
 		PowerUpData.ProjectileType.HOMING:
 			_update_homing(delta)
@@ -82,6 +98,23 @@ func setup(new_direction: Vector2, new_damage: int = 10, new_base_damage: float 
 		animated_sprite.sprite_frames = sprite_frames_override
 
 	rotation = direction.angle()
+
+
+func setup_boulder_drop(target_position: Vector2, drop_height: float = 260.0) -> void:
+	_cache_base_values()
+
+	_boulder_drop_active = true
+	_boulder_drop_target = target_position
+	_boulder_drop_height = drop_height
+	_boulder_drop_elapsed = 0.0
+	_boulder_drop_start = target_position + Vector2(0.0, -drop_height)
+
+	global_position = _boulder_drop_start
+	direction = Vector2.DOWN
+	rotation = 0.0
+
+	_disable_collision_during_boulder_drop()
+	_create_boulder_shadow(target_position)
 
 
 func apply_projectile_type(type: int, rank: int = 1) -> void:
@@ -118,9 +151,11 @@ func apply_secondary_type(type: int, rank: int = 1) -> void:
 			set_meta("pierce_remaining", maxi(int(get_meta("pierce_remaining", 0)), 3 + rank))
 
 		PowerUpData.ProjectileType.BOULDER:
-			damage = int(round(float(damage) * (1.15 + float(rank) * 0.05)))
 			set_meta("boulder_enabled", true)
 			set_meta("boulder_rank", rank)
+
+			var secondary_size_mult: float = 1.0 + float(rank) * 0.08
+			_apply_visual_and_collision_scale(Vector2(secondary_size_mult, secondary_size_mult))
 
 		PowerUpData.ProjectileType.RICOCHET:
 			bounces_remaining = 2 + rank
@@ -158,10 +193,15 @@ func _apply_phase(rank: int) -> void:
 	else:
 		set_meta("pierce_remaining", 3 + rank + pierce_rank * 2)
 
-	speed *= 1.12 + float(speed_rank) * 0.06
-	lifetime = maxf(lifetime, 8.0 + float(pierce_rank) * 0.5)
+	speed = _base_speed * (1.12 + float(speed_rank) * 0.06)
+	lifetime = maxf(_base_lifetime, 8.0 + float(pierce_rank) * 0.5)
 
 	var width_mult: float = 1.0 + float(width_rank) * 0.12
+
+	set_meta("phase_pierce_rank", pierce_rank)
+	set_meta("phase_speed_rank", speed_rank)
+	set_meta("phase_width_rank", width_rank)
+
 	_apply_visual_and_collision_scale(Vector2(width_mult, 1.0))
 
 
@@ -179,15 +219,21 @@ func _apply_boulder(rank: int) -> void:
 		PowerUpData.ProjectileType.BOULDER
 	)
 
-	var size_mult: float = 1.45 + float(rank - 1) * 0.10 + float(size_rank) * 0.18 + float(meteor_rank) * 0.30
-	var damage_mult: float = 1.35 + float(size_rank) * 0.12 + float(impact_rank) * 0.10 + float(meteor_rank) * 0.25
+	var size_mult: float = 1.15
+	size_mult += float(rank - 1) * 0.08
+	size_mult += float(size_rank) * 0.16
+	size_mult += float(meteor_rank) * 0.22
+
+	var damage_mult: float = 1.05
+	damage_mult += float(meteor_rank) * 0.10
 
 	damage = int(round(float(damage) * damage_mult))
-	speed *= maxf(0.20, 0.42 - float(size_rank) * 0.015 - float(meteor_rank) * 0.03)
-	lifetime = 6.0 + float(meteor_rank) * 0.4
 
-	pierces_enemies = true
-	set_meta("pierce_remaining", 2 + impact_rank + meteor_rank)
+	speed = _base_speed * 0.55
+	lifetime = maxf(_base_lifetime, 6.0)
+
+	pierces_enemies = false
+
 	set_meta("boulder_enabled", true)
 	set_meta("boulder_rank", rank)
 	set_meta("boulder_size_rank", size_rank)
@@ -238,7 +284,7 @@ func _apply_homing(rank: int) -> void:
 	homing_strength = 5.0 + float(rank - 1) * 0.4 + float(turn_rank) * 0.8
 	homing_range = 780.0 + float(turn_rank) * 35.0
 	lifetime = 6.0 + float(extra_rank) * 0.25
-	speed *= 0.95 + float(speed_rank) * 0.08
+	speed = _base_speed * (0.95 + float(speed_rank) * 0.08)
 
 	set_meta("homing_extra_projectiles", extra_rank)
 
@@ -262,6 +308,9 @@ func _on_body_entered(_body: Node2D) -> void:
 
 
 func _on_area_entered(area: Area2D) -> void:
+	if _boulder_drop_active:
+		return
+
 	if impact_handler == null:
 		return
 
@@ -283,13 +332,7 @@ func handle_pierce_or_destroy() -> void:
 		return
 
 	if projectile_type == PowerUpData.ProjectileType.BOULDER or bool(get_meta("boulder_enabled", false)):
-		var remaining: int = int(get_meta("pierce_remaining", 0))
-		remaining -= 1
-		set_meta("pierce_remaining", remaining)
-
-		if remaining < 0:
-			queue_free()
-
+		queue_free()
 		return
 
 	if not pierces_enemies:
@@ -309,6 +352,84 @@ func _update_homing(delta: float) -> void:
 
 	direction = direction.lerp(target_dir, homing_strength * delta).normalized()
 	rotation = direction.angle()
+
+
+func _update_boulder_drop(delta: float) -> void:
+	_boulder_drop_elapsed += delta
+
+	var t: float = clampf(_boulder_drop_elapsed / _boulder_drop_duration, 0.0, 1.0)
+	var eased_t: float = t * t
+
+	global_position = _boulder_drop_start.lerp(_boulder_drop_target, eased_t)
+
+	if _boulder_shadow != null and is_instance_valid(_boulder_shadow):
+		var size_mult: float = float(get_meta("boulder_size_mult", 1.0))
+		var shadow_scale: float = lerpf(0.65, 1.05, t)
+
+		_boulder_shadow.scale = Vector2(
+			shadow_scale * 0.95,
+			shadow_scale * 0.50
+		) * size_mult
+
+		_boulder_shadow.modulate.a = lerpf(0.45, 0.75, t)
+
+	if t >= 1.0:
+		_finish_boulder_drop()
+
+
+func _finish_boulder_drop() -> void:
+	_boulder_drop_active = false
+	global_position = _boulder_drop_target
+
+	if impact_handler != null:
+		impact_handler.handle_boulder_landing(_boulder_drop_target)
+
+	if _boulder_shadow != null and is_instance_valid(_boulder_shadow):
+		_boulder_shadow.queue_free()
+
+	queue_free()
+
+
+func _disable_collision_during_boulder_drop() -> void:
+	var collision_shape := get_node_or_null("CollisionShape2D") as CollisionShape2D
+
+	if collision_shape != null:
+		collision_shape.disabled = true
+
+
+func _create_boulder_shadow(target_position: Vector2) -> void:
+	var shadow := Sprite2D.new()
+	shadow.name = "BoulderShadow"
+	shadow.global_position = target_position
+
+	# Important:
+	# Do not use -1 here. That puts the shadow below the TileMap.
+	# Use a low positive z_index so it appears on top of the floor,
+	# but still below most characters/projectiles.
+	shadow.z_index = 1
+	shadow.z_as_relative = false
+
+	shadow.modulate = Color(0.0, 0.0, 0.0, 0.65)
+	shadow.scale = Vector2(0.95, 0.50) * float(get_meta("boulder_size_mult", 1.0))
+	shadow.add_to_group("wave_cleanup")
+
+	var texture := GradientTexture2D.new()
+	var gradient := Gradient.new()
+
+	gradient.set_color(0, Color(0.0, 0.0, 0.0, 0.90))
+	gradient.set_color(1, Color(0.0, 0.0, 0.0, 0.0))
+
+	texture.gradient = gradient
+	texture.width = 128
+	texture.height = 128
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 0.5)
+
+	shadow.texture = texture
+
+	get_tree().current_scene.add_child(shadow)
+	_boulder_shadow = shadow
 
 
 func _check_ricochet(delta: float) -> void:
@@ -392,6 +513,23 @@ func _cache_base_values() -> void:
 	if animated_sprite != null:
 		_base_sprite_scale = animated_sprite.scale
 
+	var collision_shape := get_node_or_null("CollisionShape2D") as CollisionShape2D
+
+	if collision_shape == null:
+		return
+
+	if collision_shape.shape == null:
+		return
+
+	collision_shape.shape = collision_shape.shape.duplicate()
+
+	if collision_shape.shape is CircleShape2D:
+		var circle := collision_shape.shape as CircleShape2D
+		_base_circle_radius = circle.radius
+	elif collision_shape.shape is RectangleShape2D:
+		var rect := collision_shape.shape as RectangleShape2D
+		_base_rect_size = rect.size
+
 
 func _apply_visual_and_collision_scale(scale_mult: Vector2) -> void:
 	if animated_sprite != null:
@@ -405,11 +543,21 @@ func _apply_visual_and_collision_scale(scale_mult: Vector2) -> void:
 	if collision_shape.shape == null:
 		return
 
-	collision_shape.shape = collision_shape.shape.duplicate()
-
 	if collision_shape.shape is CircleShape2D:
 		var circle := collision_shape.shape as CircleShape2D
-		circle.radius *= maxf(scale_mult.x, scale_mult.y)
+
+		if _base_circle_radius <= 0.0:
+			_base_circle_radius = circle.radius
+
+		circle.radius = _base_circle_radius * maxf(scale_mult.x, scale_mult.y)
+
 	elif collision_shape.shape is RectangleShape2D:
 		var rect := collision_shape.shape as RectangleShape2D
-		rect.size *= scale_mult
+
+		if _base_rect_size == Vector2.ZERO:
+			_base_rect_size = rect.size
+
+		rect.size = Vector2(
+			_base_rect_size.x * scale_mult.x,
+			_base_rect_size.y * scale_mult.y
+		)

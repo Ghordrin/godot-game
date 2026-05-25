@@ -204,16 +204,12 @@ func _start_dash(input_vector: Vector2) -> void:
 	_dash_elapsed = 0.0
 	_ghost_timer = 0.0
 
-	## Dash toward movement input, or toward mouse if standing still
 	if input_vector.length() > 0.1:
 		_dash_direction = input_vector.normalized()
 	else:
 		_dash_direction = get_mouse_attack_direction()
 
-	## iFrames — HealthComponent ignores all damage while this is true
 	health_component.is_invincible = true
-
-	## Brief sprite flash to show the dash started
 	animated_sprite.modulate = Color(1.5, 1.5, 2.0)
 
 
@@ -225,8 +221,6 @@ func _end_dash() -> void:
 
 
 func _spawn_ghost() -> void:
-	## Creates a faded duplicate of the current sprite frame at the player's position.
-	## Fades out quickly to leave a motion trail.
 	if animated_sprite == null or animated_sprite.sprite_frames == null:
 		return
 
@@ -236,7 +230,6 @@ func _spawn_ghost() -> void:
 	ghost.add_to_group("wave_cleanup")
 	get_tree().current_scene.add_child(ghost)
 
-	## Duplicate the sprite so it keeps the current frame frozen
 	var ghost_sprite := animated_sprite.duplicate() as AnimatedSprite2D
 	ghost_sprite.stop()
 	ghost_sprite.modulate = Color(_dash_direction.x * 0.1 + 0.4, 0.55, 1.0, 0.55)
@@ -280,8 +273,10 @@ func attack_towards_target(target_node: Node2D) -> void:
 
 func get_mouse_attack_direction() -> Vector2:
 	var mouse_direction: Vector2 = global_position.direction_to(get_global_mouse_position())
+
 	if mouse_direction == Vector2.ZERO:
 		return facing_direction
+
 	return mouse_direction.normalized()
 
 
@@ -311,17 +306,11 @@ func cast_boulder_at_position(raw_target_position: Vector2) -> void:
 		return
 
 	var target_position := get_clamped_boulder_target(raw_target_position)
-	var direction_to_target := global_position.direction_to(target_position)
-
-	if direction_to_target == Vector2.ZERO:
-		direction_to_target = facing_direction
-
 	var proj_powerups: Array[PowerUpData] = PlayerInventory.get_active_projectile_powerups()
 
 	var projectile := projectile_scene.instantiate() as Projectile
 	get_tree().current_scene.add_child(projectile)
 
-	projectile.global_position = target_position + Vector2(0.0, -260.0)
 	projectile.setup(Vector2.DOWN, stats.damage, stats.base_damage)
 
 	if proj_powerups.size() >= 1:

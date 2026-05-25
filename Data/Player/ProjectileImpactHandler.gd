@@ -18,11 +18,15 @@ const RICOCHET_CHAINS_PER_RANK: int = 1
 const RICOCHET_MAX_BOUNCES: int = 6
 
 # Boulder identity:
-# Slow, heavy, good into elites/bosses, with small impact shockwave.
-const BOULDER_PRIORITY_DAMAGE_MULT: float = 1.25
-const BOULDER_IMPACT_RADIUS: float = 60.0
-const BOULDER_IMPACT_DAMAGE_RATIO: float = 0.35
-const BOULDER_IMPACT_STUN: float = 0.10
+# Boulder lands at a target position, damages enemies around the landing point,
+# gets a small bonus into bosses/elites, and applies a short stagger.
+const BOULDER_PRIORITY_DAMAGE_MULT: float = 1.18
+const BOULDER_LANDING_RADIUS: float = 48.0
+const BOULDER_RADIUS_PER_IMPACT_RANK: float = 8.0
+const BOULDER_RADIUS_PER_METEOR_RANK: float = 14.0
+const BOULDER_BASE_STAGGER_DURATION: float = 0.12
+const BOULDER_STAGGER_PER_IMPACT_RANK: float = 0.035
+const BOULDER_STAGGER_PER_METEOR_RANK: float = 0.06
 
 var projectile: Projectile
 var hit_tracker: Dictionary = {}
@@ -58,8 +62,8 @@ func handle_hit(target: Node) -> void:
 	_apply_damage_packet(enemy_root, health_component, packet)
 	_apply_packet_status_effects(enemy_root, status_component, packet)
 
-	if projectile.projectile_type == PowerUpData.ProjectileType.BOULDER or bool(projectile.get_meta("boulder_enabled", false)):
-		_apply_boulder_impact(enemy_root, packet)
+	if _is_boulder_projectile():
+		_apply_boulder_stagger(enemy_root, status_component)
 
 	if projectile.projectile_type == PowerUpData.ProjectileType.RICOCHET:
 		_apply_bouncing_shot(enemy_root, packet, _get_ricochet_bounce_count())
@@ -72,6 +76,67 @@ func handle_hit(target: Node) -> void:
 
 	_flush_damage_numbers()
 	projectile.handle_pierce_or_destroy()
+
+
+func handle_boulder_landing(landing_position: Vector2) -> void:
+	if projectile == null or not is_instance_valid(projectile):
+		return
+
+	hit_tracker.clear()
+
+	var packet: DamagePacket = _build_projectile_packet(null)
+
+	var size_mult: float = float(projectile.get_meta("boulder_size_mult", 1.0))
+	var impact_rank: int = int(projectile.get_meta("boulder_impact_rank", 0))
+	var meteor_rank: int = int(projectile.get_meta("boulder_meteor_rank", 0))
+
+	var landing_radius: float = BOULDER_LANDING_RADIUS * size_mult
+	landing_radius += float(impact_rank) * BOULDER_RADIUS_PER_IMPACT_RANK
+	landing_radius += float(meteor_rank) * BOULDER_RADIUS_PER_METEOR_RANK
+
+	for enemy in projectile.get_tree().get_nodes_in_group("enemies"):
+		if not is_instance_valid(enemy):
+			continue
+
+		if not enemy is Node2D:
+			continue
+
+		var enemy_2d := enemy as Node2D
+		var dist: float = landing_position.distance_to(enemy_2d.global_position)
+
+		if dist > landing_radius:
+			continue
+
+		var falloff: float = 1.0 - (dist / landing_radius) * 0.35
+		var hit_packet := _make_scaled_packet(packet, falloff)
+
+		if _is_priority_target(enemy):
+			hit_packet = _make_scaled_packet(hit_packet, BOULDER_PRIORITY_DAMAGE_MULT)
+
+		var health_component := enemy.get_node_or_null("HealthComponent")
+
+		if health_component != null:
+			if health_component.has_method("take_damage_packet"):
+				health_component.take_damage_packet(hit_packet)
+			elif health_component.has_method("take_damage"):
+				health_component.take_damage(hit_packet.get_total(), "physical")
+
+			_track_packet_hits(enemy, hit_packet, 1.0)
+
+		var status_component := enemy.get_node_or_null("StatusEffectComponent") as StatusEffectComponent
+
+		if status_component != null:
+			var stagger_duration: float = BOULDER_BASE_STAGGER_DURATION
+			stagger_duration += float(impact_rank) * BOULDER_STAGGER_PER_IMPACT_RANK
+			stagger_duration += float(meteor_rank) * BOULDER_STAGGER_PER_METEOR_RANK
+
+			if _is_priority_target(enemy):
+				stagger_duration *= 1.15
+
+			status_component.apply_stun(stagger_duration)
+
+	_flush_damage_numbers()
+	_draw_simple_ring(landing_position, landing_radius, Color(0.75, 0.55, 0.32, 0.75), 0.22)
 
 
 func _find_hit_info(target: Node) -> Dictionary:
@@ -104,12 +169,11 @@ func _build_projectile_packet(enemy_root: Node = null) -> DamagePacket:
 		PlayerInventory.current_wave
 	)
 
-	if enemy_root != null and (projectile.projectile_type == PowerUpData.ProjectileType.BOULDER or bool(projectile.get_meta("boulder_enabled", false))):
-		if enemy_root.is_in_group("bosses") or enemy_root.get_node_or_null("AffixComponent") != null:
+	if enemy_root != null and _is_boulder_projectile():
+		if _is_priority_target(enemy_root):
 			packet = _make_scaled_packet(packet, BOULDER_PRIORITY_DAMAGE_MULT)
 
 	return packet
-
 
 
 func _apply_damage_packet(enemy_root: Node, health_component: Node, packet: DamagePacket) -> void:
@@ -171,8 +235,6 @@ func _apply_packet_status_effects(
 				status_component.apply_burn_from_element(amount)
 
 			"ice":
-				# Uses the current status component slow path.
-				# Ice AoE/freeze can be re-added here once the latest StatusEffectComponent is stable.
 				status_component.apply_slow(0.45, 3.0, amount)
 
 			"lightning":
@@ -190,45 +252,38 @@ func _apply_packet_status_effects(
 				pass
 
 
-func _apply_boulder_impact(enemy_root: Node, original_packet: DamagePacket) -> void:
-	if original_packet == null or original_packet.is_empty():
+func _apply_boulder_stagger(enemy_root: Node, status_component: StatusEffectComponent) -> void:
+	if status_component == null:
 		return
 
-	if not enemy_root is Node2D:
-		return
+	var impact_rank: int = int(projectile.get_meta("boulder_impact_rank", 0))
+	var meteor_rank: int = int(projectile.get_meta("boulder_meteor_rank", 0))
 
-	var origin: Vector2 = (enemy_root as Node2D).global_position
+	var stagger_duration: float = BOULDER_BASE_STAGGER_DURATION
+	stagger_duration += float(impact_rank) * BOULDER_STAGGER_PER_IMPACT_RANK
+	stagger_duration += float(meteor_rank) * BOULDER_STAGGER_PER_METEOR_RANK
 
-	for nearby in projectile.get_tree().get_nodes_in_group("enemies"):
-		if not is_instance_valid(nearby):
-			continue
+	if _is_priority_target(enemy_root):
+		stagger_duration *= 1.15
 
-		if nearby == enemy_root:
-			continue
+	status_component.apply_stun(stagger_duration)
 
-		if not nearby is Node2D:
-			continue
 
-		var nearby_2d := nearby as Node2D
-		var dist: float = origin.distance_to(nearby_2d.global_position)
+func _is_boulder_projectile() -> bool:
+	return projectile.projectile_type == PowerUpData.ProjectileType.BOULDER or bool(projectile.get_meta("boulder_enabled", false))
 
-		if dist > BOULDER_IMPACT_RADIUS:
-			continue
 
-		var falloff: float = 1.0 - (dist / BOULDER_IMPACT_RADIUS) * 0.45
-		var shock_packet := _make_scaled_packet(original_packet, BOULDER_IMPACT_DAMAGE_RATIO * falloff)
-		var health_component := nearby.get_node_or_null("HealthComponent")
+func _is_priority_target(enemy_root: Node) -> bool:
+	if enemy_root == null:
+		return false
 
-		if health_component != null and health_component.has_method("take_damage_packet"):
-			health_component.take_damage_packet(shock_packet)
-			_track_packet_hits(nearby, shock_packet, 1.0)
+	if enemy_root.is_in_group("bosses"):
+		return true
 
-			var status_component := nearby.get_node_or_null("StatusEffectComponent") as StatusEffectComponent
+	if enemy_root.get_node_or_null("AffixComponent") != null:
+		return true
 
-			if status_component != null:
-				status_component.apply_stun(BOULDER_IMPACT_STUN)
-
-	_draw_simple_ring(origin, BOULDER_IMPACT_RADIUS, Color(0.75, 0.55, 0.32, 0.75), 0.22)
+	return false
 
 
 func _apply_nova(source_enemy: Node, original_packet: DamagePacket) -> void:
@@ -245,7 +300,8 @@ func _apply_nova(source_enemy: Node, original_packet: DamagePacket) -> void:
 		if not nearby is Node2D:
 			continue
 
-		var dist: float = source_enemy.global_position.distance_to(nearby.global_position)
+		var nearby_2d := nearby as Node2D
+		var dist: float = source_enemy.global_position.distance_to(nearby_2d.global_position)
 
 		if dist > projectile.nova_radius:
 			continue
@@ -356,7 +412,7 @@ func _make_scaled_packet(source_packet: DamagePacket, scale: float) -> DamagePac
 	return packet
 
 
-func _get_projectile_type_rank(projectile_type: PowerUpData.ProjectileType) -> int:
+func _get_projectile_type_rank(projectile_type_value: int) -> int:
 	var active_powerups: Array[Dictionary] = _get_active_damage_powerups()
 	var highest_rank: int = 1
 
@@ -369,7 +425,7 @@ func _get_projectile_type_rank(projectile_type: PowerUpData.ProjectileType) -> i
 		if powerup == null:
 			continue
 
-		if powerup.projectile_type != projectile_type:
+		if powerup.projectile_type != projectile_type_value:
 			continue
 
 		highest_rank = maxi(highest_rank, int(entry.get("rank", 1)))
@@ -377,7 +433,7 @@ func _get_projectile_type_rank(projectile_type: PowerUpData.ProjectileType) -> i
 	return highest_rank
 
 
-func _get_element_rank(element_type: PowerUpData.ElementType) -> int:
+func _get_element_rank(element_type: int) -> int:
 	var active_powerups: Array[Dictionary] = _get_active_damage_powerups()
 	var highest_rank: int = 0
 
