@@ -20,6 +20,7 @@ AnimationHelper="*uid://dlqvldfhbnwms"
 PlayerInventory="*uid://c2sfawo1e6r3q"
 DamageMeter="*uid://cjhgktwh4v631"
 DamageNumberSpawner="*uid://bds8gbg4cd7cj"
+DebugFPSCounter="*res://scripts/debug_fps_counter.gd"
 
 [display]
 
