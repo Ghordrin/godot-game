@@ -292,7 +292,7 @@ func _on_countdown_finished() -> void:
 
 	if shop_ui != null:
 		if current_chapter == 1:
-			await _open_projectile_unlock_shop(current_wave)
+			await _open_element_unlock_shop(current_wave)
 		else:
 			await _open_shop(current_wave)
 
@@ -304,7 +304,26 @@ func _on_countdown_finished() -> void:
 
 
 func _open_starting_shop() -> void:
-	shop_ui.open_shop(0, loot_table, true)
+	if shop_ui == null:
+		return
+
+	if loot_table == null:
+		push_warning("WaveManager: loot_table not assigned, starting projectile shop cannot open correctly.")
+		return
+
+	shop_ui.open_shop(0, loot_table, "starter_projectile")
+	await shop_ui.shop_closed
+
+
+func _open_element_unlock_shop(wave_number: int) -> void:
+	if shop_ui == null:
+		return
+
+	if loot_table == null:
+		push_warning("WaveManager: loot_table not assigned, element shop cannot open correctly.")
+		return
+
+	shop_ui.open_shop(wave_number, loot_table, "starter_element")
 	await shop_ui.shop_closed
 
 

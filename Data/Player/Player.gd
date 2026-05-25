@@ -24,6 +24,11 @@ extends CharacterBody2D
 ## If false, Homing fully replaces manual casting.
 @export var allow_manual_cast_with_homing: bool = true
 
+# ── Boulder Targeting ─────────────────────────────────────────────────
+
+## Maximum distance from the player where Boulder can be dropped.
+@export var boulder_cast_range: float = 420.0
+
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var health_component = $HealthComponent
 @onready var stats: StatsComponent = $StatsComponent
@@ -142,6 +147,19 @@ func _has_homing_projectile() -> bool:
 	return false
 
 
+func _has_boulder_projectile() -> bool:
+	var proj_powerups: Array[PowerUpData] = PlayerInventory.get_active_projectile_powerups()
+
+	for powerup in proj_powerups:
+		if powerup == null:
+			continue
+
+		if powerup.projectile_type == PowerUpData.ProjectileType.BOULDER:
+			return true
+
+	return false
+
+
 func _find_homing_autocast_target() -> Node2D:
 	var best_target: Node2D = null
 	var best_score: float = INF
@@ -179,7 +197,7 @@ func _find_homing_autocast_target() -> Node2D:
 	return best_target
 
 
-## ── Dash Functions ─────────────────────────────────────────────────────
+# ── Dash Functions ─────────────────────────────────────────────────────
 
 func _start_dash(input_vector: Vector2) -> void:
 	_dash_active = true
@@ -229,13 +247,17 @@ func _spawn_ghost() -> void:
 	t.tween_callback(ghost.queue_free)
 
 
-## ── Combat ────────────────────────────────────────────────────────────
+# ── Combat ────────────────────────────────────────────────────────────
 
 func attack_towards_mouse() -> void:
 	var mouse_direction := get_mouse_attack_direction()
 	facing_direction = screen_direction_to_cardinal(mouse_direction)
 	play_cast_animation()
-	cast_projectile(mouse_direction)
+
+	if _has_boulder_projectile():
+		cast_boulder_at_mouse()
+	else:
+		cast_projectile(mouse_direction)
 
 
 func attack_towards_target(target_node: Node2D) -> void:
@@ -249,7 +271,11 @@ func attack_towards_target(target_node: Node2D) -> void:
 
 	facing_direction = screen_direction_to_cardinal(target_direction)
 	play_cast_animation()
-	cast_projectile(target_direction)
+
+	if _has_boulder_projectile():
+		cast_boulder_at_position(target_node.global_position)
+	else:
+		cast_projectile(target_direction)
 
 
 func get_mouse_attack_direction() -> Vector2:
@@ -259,11 +285,52 @@ func get_mouse_attack_direction() -> Vector2:
 	return mouse_direction.normalized()
 
 
+func get_clamped_boulder_target(raw_target: Vector2) -> Vector2:
+	var offset := raw_target - global_position
+
+	if offset.length() <= boulder_cast_range:
+		return raw_target
+
+	return global_position + offset.normalized() * boulder_cast_range
+
+
 func screen_direction_to_cardinal(direction: Vector2) -> Vector2:
 	if abs(direction.x) > abs(direction.y):
 		return Vector2.RIGHT if direction.x > 0 else Vector2.LEFT
 	else:
 		return Vector2.DOWN if direction.y > 0 else Vector2.UP
+
+
+func cast_boulder_at_mouse() -> void:
+	cast_boulder_at_position(get_global_mouse_position())
+
+
+func cast_boulder_at_position(raw_target_position: Vector2) -> void:
+	if projectile_scene == null:
+		push_warning("No projectile scene assigned.")
+		return
+
+	var target_position := get_clamped_boulder_target(raw_target_position)
+	var direction_to_target := global_position.direction_to(target_position)
+
+	if direction_to_target == Vector2.ZERO:
+		direction_to_target = facing_direction
+
+	var proj_powerups: Array[PowerUpData] = PlayerInventory.get_active_projectile_powerups()
+
+	var projectile := projectile_scene.instantiate() as Projectile
+	get_tree().current_scene.add_child(projectile)
+
+	projectile.global_position = target_position + Vector2(0.0, -260.0)
+	projectile.setup(Vector2.DOWN, stats.damage, stats.base_damage)
+
+	if proj_powerups.size() >= 1:
+		projectile.apply_projectile_type(proj_powerups[0].projectile_type, 1)
+
+	if proj_powerups.size() >= 2:
+		projectile.apply_secondary_type(proj_powerups[1].projectile_type, 1)
+
+	projectile.setup_boulder_drop(target_position, 260.0)
 
 
 func cast_projectile(shoot_direction: Vector2) -> void:
@@ -305,7 +372,7 @@ func cast_projectile(shoot_direction: Vector2) -> void:
 			projectile.apply_secondary_type(proj_powerups[1].projectile_type, 1)
 
 
-## ── Death ─────────────────────────────────────────────────────────────
+# ── Death ─────────────────────────────────────────────────────────────
 
 func _on_died() -> void:
 	can_move = false
@@ -315,7 +382,7 @@ func _on_died() -> void:
 	get_tree().reload_current_scene()
 
 
-## ── Animations ────────────────────────────────────────────────────────
+# ── Animations ────────────────────────────────────────────────────────
 
 func play_cast_animation() -> void:
 	play_directional_animation("attack", facing_direction)
