@@ -17,7 +17,8 @@ enum Category {
 	ELEMENT,
 	PROJECTILE,
 	UTILITY,
-	DEFENSIVE
+	DEFENSIVE,
+	PROJECTILE_UPGRADE
 }
 
 ## Element types for combination system
@@ -33,6 +34,41 @@ enum ElementType {
 enum ModifierType {
 	FLAT,
 	PERCENTAGE
+}
+
+## Projectile type system
+enum ProjectileType {
+	NONE,
+	PHASE,
+	BOULDER,
+	RICOCHET, # Legacy / future modifier. Do not offer as a core projectile.
+	NOVA,
+	HOMING,
+}
+
+## Projectile-specific upgrade behavior.
+enum ProjectileUpgradeType {
+	NONE,
+
+	# Boulder
+	BOULDER_SIZE,
+	BOULDER_IMPACT,
+	BOULDER_METEOR,
+
+	# Homing
+	HOMING_EXTRA_PROJECTILES,
+	HOMING_SPEED,
+	HOMING_TURN_RATE,
+
+	# Nova
+	NOVA_RADIUS,
+	NOVA_PATCH_COUNT,
+	NOVA_DAMAGE,
+
+	# Phase
+	PHASE_PIERCE,
+	PHASE_SPEED,
+	PHASE_WIDTH
 }
 
 # ══════════════════════════════════════════════════════════════════════
@@ -71,21 +107,32 @@ enum ModifierType {
 # PROJECTILE TYPE SYSTEM
 # ══════════════════════════════════════════════════════════════════════
 
-enum ProjectileType {
-	NONE,
-	PHASE,
-	BOULDER,
-	RICOCHET, # Legacy / future modifier. Do not offer as a core projectile.
-	NOVA,
-	HOMING,
-}
-
 @export var projectile_type: ProjectileType = ProjectileType.NONE
+
+# ══════════════════════════════════════════════════════════════════════
+# PROJECTILE UPGRADE SYSTEM
+# ══════════════════════════════════════════════════════════════════════
+
+## Set category to PROJECTILE_UPGRADE for upgrade resources.
+## Example:
+## - target_projectile_type = BOULDER
+## - projectile_upgrade_type = BOULDER_SIZE
+@export var target_projectile_type: ProjectileType = ProjectileType.NONE
+@export var projectile_upgrade_type: ProjectileUpgradeType = ProjectileUpgradeType.NONE
+
+## Minimum wave before this powerup may appear in normal shops.
+@export var min_wave: int = 1
+
+## If true, this powerup only appears when target_projectile_type is active.
+@export var requires_active_projectile: bool = false
 
 
 func get_inferred_category() -> Category:
 	if category != Category.GENERAL:
 		return category
+
+	if projectile_upgrade_type != ProjectileUpgradeType.NONE:
+		return Category.PROJECTILE_UPGRADE
 
 	if element_type != ElementType.NONE:
 		return Category.ELEMENT
@@ -102,3 +149,7 @@ func is_element_powerup() -> bool:
 
 func is_projectile_powerup() -> bool:
 	return get_inferred_category() == Category.PROJECTILE or projectile_type != ProjectileType.NONE
+
+
+func is_projectile_upgrade() -> bool:
+	return get_inferred_category() == Category.PROJECTILE_UPGRADE or projectile_upgrade_type != ProjectileUpgradeType.NONE

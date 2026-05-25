@@ -334,6 +334,10 @@ func _can_offer_powerup(powerup: PowerUpData) -> bool:
 	if powerup == null:
 		return false
 
+	if "min_wave" in powerup:
+		if current_wave < int(powerup.min_wave):
+			return false
+
 	var inferred_category := powerup.get_inferred_category()
 
 	if inferred_category == PowerUpData.Category.PROJECTILE:
@@ -341,6 +345,25 @@ func _can_offer_powerup(powerup: PowerUpData) -> bool:
 			return false
 
 		return _is_core_projectile_powerup(powerup)
+
+	if inferred_category == PowerUpData.Category.PROJECTILE_UPGRADE:
+		if not powerup.has_method("is_projectile_upgrade"):
+			return false
+
+		if powerup.target_projectile_type == PowerUpData.ProjectileType.NONE:
+			return false
+
+		if not PlayerInventory.has_active_projectile_type(powerup.target_projectile_type):
+			return false
+
+		return true
+
+	if "requires_active_projectile" in powerup and bool(powerup.requires_active_projectile):
+		if powerup.target_projectile_type == PowerUpData.ProjectileType.NONE:
+			return false
+
+		if not PlayerInventory.has_active_projectile_type(powerup.target_projectile_type):
+			return false
 
 	return true
 

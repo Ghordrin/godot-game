@@ -39,6 +39,7 @@ var equipped_powerups: Array[String] = []
 
 var wave_temporary_powerups: Array[PowerUpData] = []
 
+
 # ══════════════════════════════════════════════════════════════════════
 # GOLD
 # ══════════════════════════════════════════════════════════════════════
@@ -217,6 +218,10 @@ func clear_equipment() -> void:
 	equipment_changed.emit()
 
 
+# ══════════════════════════════════════════════════════════════════════
+# PROJECTILE POWERUPS
+# ══════════════════════════════════════════════════════════════════════
+
 func get_equipped_projectile_count() -> int:
 	var count := 0
 
@@ -233,7 +238,6 @@ func get_equipped_projectile_count() -> int:
 func get_active_projectile_powerups() -> Array[PowerUpData]:
 	var result: Array[PowerUpData] = []
 
-	# Permanent equipped projectile comes first.
 	for powerup_id in equipped_powerups:
 		if not powerup_id in collected_powerups:
 			continue
@@ -248,8 +252,6 @@ func get_active_projectile_powerups() -> Array[PowerUpData]:
 		if result.size() >= 2:
 			return result
 
-	# Wave-temporary projectile pickups also count as active projectile behavior.
-	# This fixes combat drops like Boulder Shot not applying after pickup.
 	for powerup: PowerUpData in wave_temporary_powerups:
 		if powerup == null:
 			continue
@@ -257,7 +259,6 @@ func get_active_projectile_powerups() -> Array[PowerUpData]:
 		if not _is_projectile_powerup(powerup):
 			continue
 
-		# Avoid duplicate projectile type stacking for now.
 		if _has_projectile_type(result, powerup.projectile_type):
 			continue
 
@@ -309,6 +310,81 @@ func get_active_projectile_powerups_with_ranks() -> Array[Dictionary]:
 	return result
 
 
+func get_active_projectile_upgrade_entries() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+
+	for powerup_id in equipped_powerups:
+		if not powerup_id in collected_powerups:
+			continue
+
+		var entry: Dictionary = collected_powerups[powerup_id]
+		var powerup: PowerUpData = entry.powerup
+
+		if not _is_projectile_upgrade(powerup):
+			continue
+
+		if not has_active_projectile_type(powerup.target_projectile_type):
+			continue
+
+		result.append(entry)
+
+	for powerup: PowerUpData in wave_temporary_powerups:
+		if powerup == null:
+			continue
+
+		if not _is_projectile_upgrade(powerup):
+			continue
+
+		if not has_active_projectile_type(powerup.target_projectile_type):
+			continue
+
+		result.append({
+			"powerup": powerup,
+			"rank": 1,
+			"temporary": true
+		})
+
+	return result
+
+
+func get_projectile_upgrade_rank(upgrade_type: int, target_projectile_type: int = PowerUpData.ProjectileType.NONE) -> int:
+	var total_rank: int = 0
+
+	for entry: Dictionary in get_active_projectile_upgrade_entries():
+		if not entry.has("powerup"):
+			continue
+
+		var powerup: PowerUpData = entry.powerup
+
+		if powerup == null:
+			continue
+
+		if powerup.projectile_upgrade_type != upgrade_type:
+			continue
+
+		if target_projectile_type != PowerUpData.ProjectileType.NONE:
+			if powerup.target_projectile_type != target_projectile_type:
+				continue
+
+		total_rank += int(entry.get("rank", 1))
+
+	return total_rank
+
+
+func has_active_projectile_type(projectile_type: int) -> bool:
+	if projectile_type == PowerUpData.ProjectileType.NONE:
+		return false
+
+	for powerup: PowerUpData in get_active_projectile_powerups():
+		if powerup == null:
+			continue
+
+		if powerup.projectile_type == projectile_type:
+			return true
+
+	return false
+
+
 func _is_projectile_powerup(powerup: PowerUpData) -> bool:
 	if powerup == null:
 		return false
@@ -317,6 +393,16 @@ func _is_projectile_powerup(powerup: PowerUpData) -> bool:
 		return false
 
 	return powerup.projectile_type != PowerUpData.ProjectileType.NONE
+
+
+func _is_projectile_upgrade(powerup: PowerUpData) -> bool:
+	if powerup == null:
+		return false
+
+	if not "projectile_upgrade_type" in powerup:
+		return false
+
+	return powerup.projectile_upgrade_type != PowerUpData.ProjectileUpgradeType.NONE
 
 
 func _has_projectile_type(powerups: Array[PowerUpData], projectile_type: int) -> bool:
@@ -354,8 +440,6 @@ func apply_wave_temporary_powerup(powerup: PowerUpData) -> void:
 	if powerup == null:
 		return
 
-	# Avoid duplicate temporary projectile types.
-	# Example: picking up Boulder Shot twice should not silently create weird secondary behavior.
 	if _is_projectile_powerup(powerup):
 		for existing in wave_temporary_powerups:
 			if existing == null:
