@@ -19,14 +19,17 @@ const RICOCHET_MAX_BOUNCES: int = 6
 
 # Boulder identity:
 # Boulder lands at a target position, damages enemies around the landing point,
-# gets a small bonus into bosses/elites, and applies a short stagger.
+# gets a small bonus into bosses/elites, and applies a short capped stagger.
 const BOULDER_PRIORITY_DAMAGE_MULT: float = 1.18
 const BOULDER_LANDING_RADIUS: float = 48.0
 const BOULDER_RADIUS_PER_IMPACT_RANK: float = 8.0
-const BOULDER_RADIUS_PER_METEOR_RANK: float = 14.0
-const BOULDER_BASE_STAGGER_DURATION: float = 0.12
-const BOULDER_STAGGER_PER_IMPACT_RANK: float = 0.035
-const BOULDER_STAGGER_PER_METEOR_RANK: float = 0.06
+const BOULDER_RADIUS_PER_METEOR_RANK: float = 4.0
+
+const BOULDER_BASE_STAGGER_DURATION: float = 0.06
+const BOULDER_STAGGER_PER_IMPACT_RANK: float = 0.015
+const BOULDER_STAGGER_PER_METEOR_RANK: float = 0.025
+const BOULDER_PRIORITY_STAGGER_MULT: float = 1.10
+const BOULDER_MAX_STAGGER_DURATION: float = 0.18
 
 var projectile: Projectile
 var hit_tracker: Dictionary = {}
@@ -126,13 +129,7 @@ func handle_boulder_landing(landing_position: Vector2) -> void:
 		var status_component := enemy.get_node_or_null("StatusEffectComponent") as StatusEffectComponent
 
 		if status_component != null:
-			var stagger_duration: float = BOULDER_BASE_STAGGER_DURATION
-			stagger_duration += float(impact_rank) * BOULDER_STAGGER_PER_IMPACT_RANK
-			stagger_duration += float(meteor_rank) * BOULDER_STAGGER_PER_METEOR_RANK
-
-			if _is_priority_target(enemy):
-				stagger_duration *= 1.15
-
+			var stagger_duration := _get_boulder_stagger_duration(enemy, impact_rank, meteor_rank)
 			status_component.apply_stun(stagger_duration)
 
 	_flush_damage_numbers()
@@ -258,15 +255,20 @@ func _apply_boulder_stagger(enemy_root: Node, status_component: StatusEffectComp
 
 	var impact_rank: int = int(projectile.get_meta("boulder_impact_rank", 0))
 	var meteor_rank: int = int(projectile.get_meta("boulder_meteor_rank", 0))
+	var stagger_duration := _get_boulder_stagger_duration(enemy_root, impact_rank, meteor_rank)
 
+	status_component.apply_stun(stagger_duration)
+
+
+func _get_boulder_stagger_duration(enemy_root: Node, impact_rank: int, meteor_rank: int) -> float:
 	var stagger_duration: float = BOULDER_BASE_STAGGER_DURATION
 	stagger_duration += float(impact_rank) * BOULDER_STAGGER_PER_IMPACT_RANK
 	stagger_duration += float(meteor_rank) * BOULDER_STAGGER_PER_METEOR_RANK
 
 	if _is_priority_target(enemy_root):
-		stagger_duration *= 1.15
+		stagger_duration *= BOULDER_PRIORITY_STAGGER_MULT
 
-	status_component.apply_stun(stagger_duration)
+	return minf(stagger_duration, BOULDER_MAX_STAGGER_DURATION)
 
 
 func _is_boulder_projectile() -> bool:

@@ -113,6 +113,9 @@ func setup_boulder_drop(target_position: Vector2, drop_height: float = 260.0) ->
 	direction = Vector2.DOWN
 	rotation = 0.0
 
+	var meteor_rank: int = int(get_meta("boulder_meteor_rank", 0))
+	_boulder_drop_duration = 0.70 + float(meteor_rank) * 0.10
+
 	_disable_collision_during_boulder_drop()
 	_create_boulder_shadow(target_position)
 
@@ -222,12 +225,18 @@ func _apply_boulder(rank: int) -> void:
 	var size_mult: float = 1.15
 	size_mult += float(rank - 1) * 0.08
 	size_mult += float(size_rank) * 0.16
-	size_mult += float(meteor_rank) * 0.22
 
-	var damage_mult: float = 1.05
-	damage_mult += float(meteor_rank) * 0.10
+	# Meteor should not replace BOULDER_SIZE.
+	# It gets only a small size contribution.
+	size_mult += float(meteor_rank) * 0.06
 
-	damage = int(round(float(damage) * damage_mult))
+	# Meteor is the Boulder damage evolution.
+	# Use a stable base value, but never below current projectile damage,
+	# so normal damage buffs still affect Meteor.
+	var meteor_base_damage: float = maxf(base_damage, float(damage))
+	var damage_mult: float = 1.10 + pow(float(meteor_rank), 1.25) * 0.32
+
+	damage = int(round(meteor_base_damage * damage_mult))
 
 	speed = _base_speed * 0.55
 	lifetime = maxf(_base_lifetime, 6.0)
@@ -240,6 +249,8 @@ func _apply_boulder(rank: int) -> void:
 	set_meta("boulder_impact_rank", impact_rank)
 	set_meta("boulder_meteor_rank", meteor_rank)
 	set_meta("boulder_size_mult", size_mult)
+	set_meta("boulder_damage_mult", damage_mult)
+	set_meta("boulder_base_damage_used", meteor_base_damage)
 
 	_apply_visual_and_collision_scale(Vector2(size_mult, size_mult))
 
@@ -402,10 +413,6 @@ func _create_boulder_shadow(target_position: Vector2) -> void:
 	shadow.name = "BoulderShadow"
 	shadow.global_position = target_position
 
-	# Important:
-	# Do not use -1 here. That puts the shadow below the TileMap.
-	# Use a low positive z_index so it appears on top of the floor,
-	# but still below most characters/projectiles.
 	shadow.z_index = 1
 	shadow.z_as_relative = false
 

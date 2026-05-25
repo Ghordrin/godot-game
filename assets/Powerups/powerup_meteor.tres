@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://dydgw03ppmqeb"]
+
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1_a10u0"]
+
+[resource]
+script = ExtResource("1_a10u0")
+id = "meteor"
+display_name = "Meteor"
+description = "Upgrades boulder to meteor"
+rarity = 2
+category = 5
+target_projectile_type = 2
+projectile_upgrade_type = 3
+min_wave = 5
+requires_active_projectile = true
+metadata/_custom_type_script = "uid://c6rwp657h3iie"

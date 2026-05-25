@@ -43,6 +43,22 @@ var countdown_ui: CanvasLayer = null
 @export var waves_per_unlock: int = 3
 
 # ══════════════════════════════════════════════════════════════════════
+# ENEMY SAFETY CONFIG
+# ══════════════════════════════════════════════════════════════════════
+
+@export var enemy_safety_enabled: bool = true
+@export var enemy_safety_check_interval: float = 2.0
+@export var enemy_max_distance_from_player: float = 2500.0
+@export var enemy_reposition_distance_from_player: float = 520.0
+@export var enemy_min_reposition_distance_from_player: float = 360.0
+@export var force_invisible_enemies_visible: bool = true
+@export var remove_invalid_enemies: bool = true
+@export var remove_dead_enemies: bool = true
+@export var enemy_safety_debug: bool = true
+
+var _enemy_safety_timer: float = 0.0
+
+# ══════════════════════════════════════════════════════════════════════
 # ELITE CONFIG
 # ══════════════════════════════════════════════════════════════════════
 
@@ -131,6 +147,8 @@ var chapter_spawn_flow_finished: bool = false
 
 
 func _ready() -> void:
+	_enemy_safety_timer = enemy_safety_check_interval
+
 	_setup_shop_ui()
 	_setup_countdown_ui()
 
@@ -140,6 +158,22 @@ func _ready() -> void:
 		await _open_starting_shop()
 
 	start_next_chapter()
+
+
+func _process(delta: float) -> void:
+	if not enemy_safety_enabled:
+		return
+
+	if state != State.SPAWNING and state != State.CHAPTER_ACTIVE:
+		return
+
+	_enemy_safety_timer -= delta
+
+	if _enemy_safety_timer > 0.0:
+		return
+
+	_enemy_safety_timer = enemy_safety_check_interval
+	_validate_active_enemies()
 
 
 func _setup_shop_ui() -> void:
@@ -188,6 +222,7 @@ func start_next_chapter() -> void:
 	elites_spawned_this_chapter = 0
 	boss_spawned_this_chapter = false
 	chapter_spawn_flow_finished = false
+	_enemy_safety_timer = enemy_safety_check_interval
 
 	current_wave = _get_virtual_wave_for_segment(1)
 	PlayerInventory.current_wave = current_wave
@@ -797,6 +832,192 @@ func _cleanup_alive_enemy_list() -> void:
 
 		if health != null and health.is_dead:
 			alive_enemies.remove_at(i)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ENEMY SAFETY / LOST ENEMY RECOVERY
+# ══════════════════════════════════════════════════════════════════════
+
+func _validate_active_enemies() -> void:
+	var player := _get_player_node()
+
+	for i in range(alive_enemies.size() - 1, -1, -1):
+		var enemy: Node2D = alive_enemies[i]
+
+		if not is_instance_valid(enemy):
+			alive_enemies.remove_at(i)
+			continue
+
+		if _should_remove_invalid_enemy(enemy):
+			alive_enemies.remove_at(i)
+			continue
+
+		if force_invisible_enemies_visible:
+			_force_enemy_visible(enemy)
+
+		if player != null:
+			_check_enemy_distance(enemy, player)
+
+	enemy_count_changed.emit(alive_enemies.size(), total_spawned)
+	_finish_chapter_if_ready()
+
+
+func _should_remove_invalid_enemy(enemy: Node2D) -> bool:
+	var health_component := enemy.get_node_or_null("HealthComponent")
+
+	if health_component == null:
+		if enemy_safety_debug:
+			push_warning(
+				"WaveManager: Enemy has no HealthComponent, removing: "
+				+ str(enemy.name)
+				+ " at "
+				+ str(enemy.global_position)
+			)
+
+		if remove_invalid_enemies:
+			enemy.queue_free()
+			return true
+
+		return false
+
+	if remove_dead_enemies and _is_health_component_dead(health_component):
+		if enemy_safety_debug:
+			push_warning(
+				"WaveManager: Dead enemy still tracked, removing: "
+				+ str(enemy.name)
+				+ " at "
+				+ str(enemy.global_position)
+			)
+
+		enemy.queue_free()
+		return true
+
+	return false
+
+
+func _is_health_component_dead(health_component: Node) -> bool:
+	if "is_dead" in health_component:
+		return bool(health_component.is_dead)
+
+	if "dead" in health_component:
+		return bool(health_component.dead)
+
+	if "current_health" in health_component:
+		return float(health_component.current_health) <= 0.0
+
+	if "health" in health_component:
+		return float(health_component.health) <= 0.0
+
+	return false
+
+
+func _force_enemy_visible(enemy: Node2D) -> void:
+	var changed := false
+
+	if not enemy.visible:
+		enemy.visible = true
+		changed = true
+
+	if enemy.modulate.a < 0.95:
+		enemy.modulate.a = 1.0
+		changed = true
+
+	for child in enemy.get_children():
+		if child is CanvasItem:
+			var canvas_item := child as CanvasItem
+
+			if not canvas_item.visible:
+				canvas_item.visible = true
+				changed = true
+
+			if canvas_item.modulate.a < 0.95:
+				canvas_item.modulate.a = 1.0
+				changed = true
+
+	if changed and enemy_safety_debug:
+		push_warning(
+			"WaveManager: Forced invisible enemy visible: "
+			+ str(enemy.name)
+			+ " at "
+			+ str(enemy.global_position)
+		)
+
+
+func _check_enemy_distance(enemy: Node2D, player: Node2D) -> void:
+	var distance := enemy.global_position.distance_to(player.global_position)
+
+	if distance <= enemy_max_distance_from_player:
+		enemy.set_meta("safety_reposition_count", 0)
+		return
+
+	var old_position := enemy.global_position
+	var new_position := _get_safe_position_near_player(player)
+
+	enemy.global_position = new_position
+
+	var reposition_count := int(enemy.get_meta("safety_reposition_count", 0)) + 1
+	enemy.set_meta("safety_reposition_count", reposition_count)
+
+	if enemy_safety_debug:
+		push_warning(
+			"WaveManager: Repositioned lost enemy "
+			+ str(enemy.name)
+			+ " from "
+			+ str(old_position)
+			+ " to "
+			+ str(new_position)
+			+ " distance was "
+			+ str(distance)
+			+ " reposition_count="
+			+ str(reposition_count)
+		)
+
+
+func _get_safe_position_near_player(player: Node2D) -> Vector2:
+	var angle := randf() * TAU
+	var distance := randf_range(
+		enemy_min_reposition_distance_from_player,
+		enemy_reposition_distance_from_player
+	)
+
+	return player.global_position + Vector2.RIGHT.rotated(angle) * distance
+
+
+func _get_player_node() -> Node2D:
+	var group_player := get_tree().get_first_node_in_group("player")
+
+	if group_player is Node2D:
+		return group_player as Node2D
+
+	return null
+
+
+func debug_print_remaining_enemies() -> void:
+	print("WaveManager: Remaining enemies:")
+
+	for enemy in alive_enemies:
+		if not is_instance_valid(enemy):
+			print("- Invalid enemy reference")
+			continue
+
+		var health_component := enemy.get_node_or_null("HealthComponent")
+
+		print(
+			"- ",
+			enemy.name,
+			" pos=",
+			enemy.global_position,
+			" visible=",
+			enemy.visible,
+			" alpha=",
+			enemy.modulate.a,
+			" health_component=",
+			health_component != null,
+			" dead=",
+			_is_health_component_dead(health_component) if health_component != null else "unknown",
+			" parent=",
+			enemy.get_parent().name if enemy.get_parent() != null else "none"
+		)
 
 
 func _get_random_spawn_position() -> Vector2:
