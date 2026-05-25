@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://bgu4oipoe5lyf" path="res://scenes/main.tscn" id="1_nnsk1"]
 [ext_resource type="PackedScene" uid="uid://c843ovyhnhc3x" path="res://Data/Player/Player.tscn" id="2_71j4m"]
+[ext_resource type="PackedScene" uid="uid://xduk3ix6qxt3" path="res://Data/World/Resources/PowerUp.tscn" id="4_e3hyu"]
 [ext_resource type="Script" uid="uid://ckh7dqbc426jw" path="res://scripts/wave_manager.gd" id="4_i7141"]
 [ext_resource type="PackedScene" uid="uid://cgw46tmagm4yw" path="res://Data/Enemies/Normal/Enemy.tscn" id="5_4mrxx"]
 [ext_resource type="Resource" uid="uid://bkbmd5ethceri" path="res://assets/Powerups/PowerUpTable.tres" id="5_e3hyu"]
@@ -12,6 +13,8 @@
 [ext_resource type="PackedScene" uid="uid://c561h8v7o45e8" path="res://Data/Enemies/Elite/EliteEnemy.tscn" id="9_e3hyu"]
 [ext_resource type="PackedScene" uid="uid://hgtd3cbw048g" path="res://Data/Enemies/Boss/Orbital/BossOrbital.tscn" id="9_q5onr"]
 [ext_resource type="PackedScene" uid="uid://h31striv72lc" path="res://Data/UI/Shop/ShopUI.tscn" id="10_w7kh3"]
+[ext_resource type="PackedScene" uid="uid://b5rf4rytsw8ro" path="res://Data/Enemies/Boss/RailWarden/RailWarden.tscn" id="11_xo05s"]
+[ext_resource type="PackedScene" uid="uid://c8vbm7fm7soob" path="res://Data/Enemies/Elite/DashHunter.tscn" id="13_dss4m"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7r4gi"]
 shader = ExtResource("8_4mrxx")
@@ -37,9 +40,10 @@ position = Vector2(644, 41)
 script = ExtResource("4_i7141")
 shop_scene = ExtResource("10_w7kh3")
 loot_table = ExtResource("5_e3hyu")
+loot_item_scene = ExtResource("4_e3hyu")
 enemy_scenes = Array[PackedScene]([ExtResource("5_4mrxx")])
-boss_scenes = Array[PackedScene]([ExtResource("6_i7141"), ExtResource("7_4mrxx"), ExtResource("9_q5onr")])
-elite_scenes = Array[PackedScene]([ExtResource("9_e3hyu")])
+boss_scenes = Array[PackedScene]([ExtResource("6_i7141"), ExtResource("7_4mrxx"), ExtResource("9_q5onr"), ExtResource("11_xo05s")])
+elite_scenes = Array[PackedScene]([ExtResource("9_e3hyu"), ExtResource("13_dss4m")])
 
 [node name="SpawnLocations" type="Node" parent="." unique_id=1532555716]
 

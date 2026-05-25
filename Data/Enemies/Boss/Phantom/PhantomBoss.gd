@@ -720,33 +720,25 @@ func _spawn_powerup_pickup(powerup: PowerUpData, index: int, total_count: int) -
 # ══════════════════════════════════════════════════════════════════════
 
 func _on_died() -> void:
-	if _is_dying:
-		return
-
-	_is_dying = true
-
 	target = null
 	velocity = Vector2.ZERO
 
-	_remove_shadow_marker()
-
-	if collision != null:
-		collision.set_deferred("disabled", true)
+	collision.set_deferred("disabled", true)
 
 	if has_node("Hurtbox"):
 		$Hurtbox.set_deferred("monitoring", false)
 		$Hurtbox.set_deferred("monitorable", false)
 
+	var status_component := get_node_or_null("StatusEffectComponent") as StatusEffectComponent
+	if status_component != null:
+		status_component.on_enemy_death()
+
 	drop_gold.call_deferred()
 	drop_loot.call_deferred()
+	#play_death_animation()
 
-	if animated_sprite != null:
-		animated_sprite.modulate = Color.WHITE
-
-		var death_fade := create_tween()
-		death_fade.tween_property(animated_sprite, "modulate:a", 0.0, 0.6)
-
-	await get_tree().create_timer(0.8).timeout
+	if animated_sprite.sprite_frames != null and animated_sprite.sprite_frames.has_animation("death"):
+		await animated_sprite.animation_finished
 
 	queue_free()
 

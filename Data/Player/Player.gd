@@ -13,20 +13,31 @@ extends CharacterBody2D
 ## Seconds before dash can be used again.
 @export var dash_cooldown_time: float = 1.5
 
+# ── Homing Autocast ───────────────────────────────────────────────────
+
+## If true, Homing projectile type fires automatically when off cooldown.
+@export var homing_autocast_enabled: bool = true
+
+## Homing only autocasts if an enemy is within this range.
+@export var homing_autocast_range: float = 780.0
+
+## If false, Homing fully replaces manual casting.
+@export var allow_manual_cast_with_homing: bool = true
+
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
-@onready var health_component                  = $HealthComponent
-@onready var stats: StatsComponent             = $StatsComponent
+@onready var health_component = $HealthComponent
+@onready var stats: StatsComponent = $StatsComponent
 
 var last_move_direction: Vector2 = Vector2.DOWN
-var facing_direction: Vector2    = Vector2.DOWN
-var can_move: bool    = true
+var facing_direction: Vector2 = Vector2.DOWN
+var can_move: bool = true
 var attack_cooldown: float = 0.0
 
 ## Dash state
-var _dash_active: bool    = false
-var _dash_elapsed: float  = 0.0
+var _dash_active: bool = false
+var _dash_elapsed: float = 0.0
 var _dash_direction: Vector2 = Vector2.ZERO
-var _dash_cooldown: float = 0.0   ## Remaining cooldown — 0 means ready
+var _dash_cooldown: float = 0.0
 
 ## How often ghost copies spawn during the dash (seconds between each)
 const GHOST_INTERVAL: float = 0.045
@@ -56,7 +67,7 @@ func _physics_process(delta: float) -> void:
 	## ── Dash is active — override all normal movement ─────────────────
 	if _dash_active:
 		_dash_elapsed += delta
-		_ghost_timer   -= delta
+		_ghost_timer -= delta
 		velocity = _dash_direction * dash_speed
 
 		## Spawn ghost trail
@@ -81,10 +92,7 @@ func _physics_process(delta: float) -> void:
 		_start_dash(input_vector)
 		return
 
-	## Attack
-	if Input.is_action_just_pressed("cast_projectile") and attack_cooldown <= 0.0:
-		attack_towards_mouse()
-		attack_cooldown = 1.0 / max(stats.attack_speed, 0.1)
+	_handle_attack_input()
 
 	if Input.is_action_just_pressed("debug_dmg"):
 		health_component.take_damage(10)
@@ -92,7 +100,7 @@ func _physics_process(delta: float) -> void:
 	if input_vector != Vector2.ZERO:
 		velocity = input_vector.normalized() * stats.move_speed
 		last_move_direction = input_vector
-		facing_direction    = input_vector
+		facing_direction = input_vector
 		play_walk_animation(input_vector)
 	else:
 		velocity = Vector2.ZERO
@@ -101,12 +109,82 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 
+func _handle_attack_input() -> void:
+	if attack_cooldown > 0.0:
+		return
+
+	if _has_homing_projectile() and homing_autocast_enabled:
+		var target := _find_homing_autocast_target()
+
+		if target != null:
+			attack_towards_target(target)
+			attack_cooldown = 1.0 / max(stats.attack_speed, 0.1)
+			return
+
+	if Input.is_action_just_pressed("cast_projectile"):
+		if _has_homing_projectile() and not allow_manual_cast_with_homing:
+			return
+
+		attack_towards_mouse()
+		attack_cooldown = 1.0 / max(stats.attack_speed, 0.1)
+
+
+func _has_homing_projectile() -> bool:
+	var proj_powerups: Array[PowerUpData] = PlayerInventory.get_active_projectile_powerups()
+
+	for powerup in proj_powerups:
+		if powerup == null:
+			continue
+
+		if powerup.projectile_type == PowerUpData.ProjectileType.HOMING:
+			return true
+
+	return false
+
+
+func _find_homing_autocast_target() -> Node2D:
+	var best_target: Node2D = null
+	var best_score: float = INF
+
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if not is_instance_valid(enemy):
+			continue
+
+		if not enemy is Node2D:
+			continue
+
+		var enemy_2d := enemy as Node2D
+		var distance: float = global_position.distance_to(enemy_2d.global_position)
+
+		if distance > homing_autocast_range:
+			continue
+
+		var score: float = distance
+
+		if enemy.is_in_group("bosses"):
+			score *= 0.30
+		elif enemy.get_node_or_null("AffixComponent") != null:
+			score *= 0.50
+
+		var health := enemy.get_node_or_null("HealthComponent")
+
+		if health != null and "current_health" in health and "max_health" in health:
+			var hp_ratio: float = float(health.current_health) / maxf(1.0, float(health.max_health))
+			score *= lerpf(0.75, 1.15, hp_ratio)
+
+		if score < best_score:
+			best_score = score
+			best_target = enemy_2d
+
+	return best_target
+
+
 ## ── Dash Functions ─────────────────────────────────────────────────────
 
 func _start_dash(input_vector: Vector2) -> void:
-	_dash_active   = true
-	_dash_elapsed  = 0.0
-	_ghost_timer   = 0.0
+	_dash_active = true
+	_dash_elapsed = 0.0
+	_ghost_timer = 0.0
 
 	## Dash toward movement input, or toward mouse if standing still
 	if input_vector.length() > 0.1:
@@ -122,7 +200,7 @@ func _start_dash(input_vector: Vector2) -> void:
 
 
 func _end_dash() -> void:
-	_dash_active   = false
+	_dash_active = false
 	_dash_cooldown = dash_cooldown_time
 	health_component.is_invincible = false
 	animated_sprite.modulate = Color.WHITE
@@ -137,6 +215,7 @@ func _spawn_ghost() -> void:
 	var ghost := Node2D.new()
 	ghost.global_position = global_position
 	ghost.z_index = -1
+	ghost.add_to_group("wave_cleanup")
 	get_tree().current_scene.add_child(ghost)
 
 	## Duplicate the sprite so it keeps the current frame frozen
@@ -159,6 +238,20 @@ func attack_towards_mouse() -> void:
 	cast_projectile(mouse_direction)
 
 
+func attack_towards_target(target_node: Node2D) -> void:
+	if target_node == null or not is_instance_valid(target_node):
+		return
+
+	var target_direction := global_position.direction_to(target_node.global_position)
+
+	if target_direction == Vector2.ZERO:
+		target_direction = facing_direction
+
+	facing_direction = screen_direction_to_cardinal(target_direction)
+	play_cast_animation()
+	cast_projectile(target_direction)
+
+
 func get_mouse_attack_direction() -> Vector2:
 	var mouse_direction: Vector2 = global_position.direction_to(get_global_mouse_position())
 	if mouse_direction == Vector2.ZERO:
@@ -178,21 +271,26 @@ func cast_projectile(shoot_direction: Vector2) -> void:
 		push_warning("No projectile scene assigned.")
 		return
 
-	var count: int     = max(1, stats.projectile_count)
-	var spread_angle   := deg_to_rad(12.0)
+	var count: int = max(1, stats.projectile_count)
+	var spread_angle := deg_to_rad(12.0)
 	var proj_powerups: Array[PowerUpData] = PlayerInventory.get_active_projectile_powerups()
 
 	for i in count:
 		var direction := shoot_direction.normalized()
 
+		if direction == Vector2.ZERO:
+			direction = facing_direction
+
 		if count > 1:
 			var offset := 0.0
+
 			if count % 2 == 1:
 				var middle := count / 2.0
 				offset = float(i - middle) * spread_angle
 			else:
 				var middle := float(count - 1) / 2.0
 				offset = (float(i) - middle) * spread_angle
+
 			direction = direction.rotated(offset)
 
 		var projectile := projectile_scene.instantiate() as Projectile
@@ -201,18 +299,10 @@ func cast_projectile(shoot_direction: Vector2) -> void:
 		projectile.setup(direction, stats.damage, stats.base_damage)
 
 		if proj_powerups.size() >= 1:
-			var rank: int = PlayerInventory.get_powerup_rank(proj_powerups[0])
-			projectile.apply_projectile_type(
-				proj_powerups[0].projectile_type,
-				rank
-			)
+			projectile.apply_projectile_type(proj_powerups[0].projectile_type, 1)
 
 		if proj_powerups.size() >= 2:
-			var rank: int = PlayerInventory.get_powerup_rank(proj_powerups[1])
-			projectile.apply_secondary_type(
-				proj_powerups[1].projectile_type,
-				rank
-			)
+			projectile.apply_secondary_type(proj_powerups[1].projectile_type, 1)
 
 
 ## ── Death ─────────────────────────────────────────────────────────────

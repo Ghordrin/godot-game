@@ -1,0 +1,50 @@
+[gd_scene format=3 uid="uid://b5rf4rytsw8ro"]
+
+[ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://components/StatusEffectComponent.gd" id="1_67xn2"]
+[ext_resource type="Script" uid="uid://c04tejs6f2l76" path="res://Data/Enemies/Boss/RailWarden/RailWarden.gd" id="1_nfnfi"]
+[ext_resource type="Texture2D" uid="uid://bsi6qc7c7pgf0" path="res://assets/enemies/Tiled_files/Slime3_Hurt_full.png" id="1_xafgu"]
+[ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://components/HealthComponent.gd" id="2_xafgu"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_nfnfi"]
+atlas = ExtResource("1_xafgu")
+region = Rect2(128, 0, 64, 64)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_23een"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_nfnfi")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_nfnfi"]
+radius = 16.0
+height = 32.0
+
+[node name="RailWarden" type="CharacterBody2D" unique_id=63450376]
+script = ExtResource("1_nfnfi")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=37264088]
+texture_filter = 1
+scale = Vector2(9.09533, 8.58385)
+sprite_frames = SubResource("SpriteFrames_23een")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1998568939]
+
+[node name="StatusEffectComponent" type="Node" parent="." unique_id=385840509]
+script = ExtResource("1_67xn2")
+metadata/_custom_type_script = "uid://dn6lad6evss5"
+
+[node name="HealthComponent" type="Node" parent="." unique_id=814066852]
+script = ExtResource("2_xafgu")
+metadata/_custom_type_script = "uid://6dttfeskycuk"
+
+[node name="Hurtbox" type="Area2D" parent="." unique_id=2105801169 groups=["enemies"]]
+collision_layer = 2
+collision_mask = 4
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=1868978488]
+shape = SubResource("CapsuleShape2D_nfnfi")

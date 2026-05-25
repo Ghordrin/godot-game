@@ -282,10 +282,82 @@ func _roll_new_offer() -> void:
 			offer = loot_table.roll_category_offer(PowerUpData.Category.ELEMENT, OFFER_SIZE)
 
 		ShopMode.STARTER_PROJECTILE:
-			offer = loot_table.roll_category_offer(PowerUpData.Category.PROJECTILE, OFFER_SIZE)
+			offer = _roll_starter_projectile_offer()
 
 		_:
-			offer = loot_table.roll_shop_offer(OFFER_SIZE)
+			offer = _roll_normal_offer_without_invalid_categories()
+
+
+func _roll_starter_projectile_offer() -> Array[PowerUpData]:
+	var raw_offer: Array[PowerUpData] = loot_table.roll_category_offer(PowerUpData.Category.PROJECTILE, 12)
+	var filtered: Array[PowerUpData] = []
+
+	for powerup in raw_offer:
+		if _is_core_projectile_powerup(powerup):
+			filtered.append(powerup)
+
+		if filtered.size() >= OFFER_SIZE:
+			break
+
+	return filtered
+
+
+func _roll_normal_offer_without_invalid_categories() -> Array[PowerUpData]:
+	var result: Array[PowerUpData] = []
+	var attempts: int = 0
+	var max_attempts: int = 50
+
+	while result.size() < OFFER_SIZE and attempts < max_attempts:
+		attempts += 1
+
+		var candidates: Array[PowerUpData] = loot_table.roll_shop_offer(OFFER_SIZE)
+
+		for powerup in candidates:
+			if powerup == null:
+				continue
+
+			if not _can_offer_powerup(powerup):
+				continue
+
+			if result.has(powerup):
+				continue
+
+			result.append(powerup)
+
+			if result.size() >= OFFER_SIZE:
+				break
+
+	return result
+
+
+func _can_offer_powerup(powerup: PowerUpData) -> bool:
+	if powerup == null:
+		return false
+
+	var inferred_category := powerup.get_inferred_category()
+
+	if inferred_category == PowerUpData.Category.PROJECTILE:
+		if PlayerInventory.get_active_projectile_powerups().size() > 0:
+			return false
+
+		return _is_core_projectile_powerup(powerup)
+
+	return true
+
+
+func _is_core_projectile_powerup(powerup: PowerUpData) -> bool:
+	if powerup == null:
+		return false
+
+	if not powerup.is_projectile_powerup():
+		return false
+
+	return powerup.projectile_type in [
+		PowerUpData.ProjectileType.PHASE,
+		PowerUpData.ProjectileType.BOULDER,
+		PowerUpData.ProjectileType.NOVA,
+		PowerUpData.ProjectileType.HOMING,
+	]
 
 
 func _update_display() -> void:

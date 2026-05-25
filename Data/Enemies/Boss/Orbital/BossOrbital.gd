@@ -655,36 +655,25 @@ func _on_damaged(_amount: int) -> void:
 
 
 func _on_died() -> void:
-	if _is_dying:
-		return
-
-	_is_dying = true
-
 	target = null
 	velocity = Vector2.ZERO
-	_attacking = false
 
-	if _charge_tween != null and _charge_tween.is_valid():
-		_charge_tween.kill()
-
-	if collision != null:
-		collision.set_deferred("disabled", true)
+	collision.set_deferred("disabled", true)
 
 	if has_node("Hurtbox"):
 		$Hurtbox.set_deferred("monitoring", false)
 		$Hurtbox.set_deferred("monitorable", false)
 
+	var status_component := get_node_or_null("StatusEffectComponent") as StatusEffectComponent
+	if status_component != null:
+		status_component.on_enemy_death()
+
 	drop_gold.call_deferred()
 	drop_loot.call_deferred()
+	#play_death_animation()
 
-	if animated_sprite != null and animated_sprite.sprite_frames != null:
-		if animated_sprite.sprite_frames.has_animation("death"):
-			animated_sprite.play("death")
-			await animated_sprite.animation_finished
-		else:
-			hide()
-	else:
-		hide()
+	if animated_sprite.sprite_frames != null and animated_sprite.sprite_frames.has_animation("death"):
+		await animated_sprite.animation_finished
 
 	queue_free()
 

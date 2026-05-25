@@ -1,25 +1,21 @@
 [gd_resource type="Resource" script_class="PowerUpTable" format=3 uid="uid://bkbmd5ethceri"]
 
 [ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1_jcwu3"]
-[ext_resource type="Resource" uid="uid://cog8l1mwnv543" path="res://assets/Powerups/movement_speed_up.tres" id="2_hl6an"]
 [ext_resource type="Resource" uid="uid://uqvigd0jyngq" path="res://assets/Powerups/damage_up.tres" id="3_1a6ub"]
-[ext_resource type="Resource" uid="uid://dojpccjkdoe1u" path="res://assets/Powerups/kinetic_drift.tres" id="4_5kbvl"]
 [ext_resource type="Script" uid="uid://d0vqbvr6mccao" path="res://scripts/loot_table.gd" id="4_7fk72"]
 [ext_resource type="Resource" uid="uid://djhgvxtstgy0w" path="res://assets/Powerups/powerup_phase_shot.tres" id="6_055ta"]
-[ext_resource type="Resource" path="res://assets/Powerups/powerup_venom_injector.tres" id="6_skotp"]
+[ext_resource type="Resource" uid="uid://ba2u6l320s1dd" path="res://assets/Powerups/powerup_venom_injector.tres" id="6_skotp"]
 [ext_resource type="Resource" uid="uid://dxqnl5j238qvm" path="res://assets/Powerups/powerup_boulder_shot.tres" id="7_6wxod"]
-[ext_resource type="Resource" path="res://assets/Powerups/powerup_arc_conductor.tres" id="7_055ta"]
+[ext_resource type="Resource" uid="uid://chqw67xgurb00" path="res://assets/Powerups/powerup_arc_conductor.tres" id="7_055ta"]
 [ext_resource type="Resource" uid="uid://c85gt45v5h1g6" path="res://assets/Powerups/projectile_count.tres" id="8_6wxod"]
-[ext_resource type="Resource" uid="uid://djsaiq6gjjh0t" path="res://assets/Powerups/voltaic_chamber.tres" id="9_jcwu3"]
 [ext_resource type="Resource" uid="uid://dvohtq0r7oqaf" path="res://assets/Powerups/powerup_nova_shot.tres" id="9_jdpw0"]
 [ext_resource type="Resource" uid="uid://b303pfo3nlrhn" path="res://assets/Powerups/powerup_cryo_lens.tres" id="10_anh6u"]
-[ext_resource type="Resource" uid="uid://e5novowbpj50" path="res://assets/Powerups/powerup_ricochet_shot.tres" id="10_fburt"]
 [ext_resource type="Resource" uid="uid://b0cowe0863wh0" path="res://assets/Powerups/powerup_ignition_core.tres" id="11_jcwu3"]
 [ext_resource type="Resource" uid="uid://bo6i1b6ul4pd" path="res://assets/Powerups/powerup_homing_shot.tres" id="14_uqtb1"]
 
 [resource]
 script = ExtResource("4_7fk72")
-common_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("2_hl6an"), ExtResource("4_5kbvl"), ExtResource("11_jcwu3"), ExtResource("6_skotp"), ExtResource("6_055ta"), ExtResource("7_6wxod")])
-rare_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("3_1a6ub"), ExtResource("7_055ta"), ExtResource("10_anh6u"), ExtResource("14_uqtb1")])
-epic_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("10_anh6u"), ExtResource("8_6wxod"), ExtResource("9_jdpw0"), ExtResource("10_fburt")])
-legendary_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("9_jcwu3")])
+common_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("10_anh6u"), ExtResource("11_jcwu3"), ExtResource("6_skotp"), ExtResource("7_055ta"), ExtResource("14_uqtb1")])
+rare_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("3_1a6ub"), ExtResource("7_6wxod")])
+epic_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("8_6wxod")])
+legendary_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("9_jdpw0"), ExtResource("6_055ta")])

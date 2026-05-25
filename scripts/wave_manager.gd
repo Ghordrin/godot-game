@@ -333,9 +333,28 @@ func _open_shop(wave_number: int) -> void:
 
 
 func _clear_projectiles() -> void:
-	for projectile in get_tree().get_nodes_in_group("projectiles"):
-		if is_instance_valid(projectile):
-			projectile.queue_free()
+	var cleanup_groups: Array[String] = [
+		"projectiles",
+		"enemy_projectiles",
+		"hazards",
+		"area_effects",
+		"wave_cleanup"
+	]
+
+	var cleared_nodes: Array[Node] = []
+
+	for group_name in cleanup_groups:
+		for node in get_tree().get_nodes_in_group(group_name):
+			if not is_instance_valid(node):
+				continue
+
+			if cleared_nodes.has(node):
+				continue
+
+			cleared_nodes.append(node)
+			node.queue_free()
+
+	print("[WaveManager] Cleared wave hazards/projectiles: ", cleared_nodes.size())
 
 
 func _get_chapter_progress() -> float:

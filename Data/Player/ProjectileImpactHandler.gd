@@ -9,13 +9,20 @@ const LIGHTNING_BASE_CHAINS: int = 3
 const LIGHTNING_CHAINS_PER_RANK: int = 1
 const LIGHTNING_MAX_CHAINS: int = 8
 
-# Ricochet should feel like heavier projectile bounces.
-# Fewer than "infinite", but reliable in dense waves.
+# Ricochet is kept as legacy / future modifier support.
+# It should not be offered as one of the 4 core projectiles right now.
 const BOUNCE_RADIUS: float = 280.0
 const BOUNCE_DAMAGE_FALLOFF: float = 0.70
-const RICOCHET_BASE_BOUNCES: int = 3
-const RICOCHET_BOUNCES_PER_RANK: int = 1
-const RICOCHET_MAX_BOUNCES: int = 10
+const RICOCHET_BASE_BOUNCES: int = 2
+const RICOCHET_CHAINS_PER_RANK: int = 1
+const RICOCHET_MAX_BOUNCES: int = 6
+
+# Boulder identity:
+# Slow, heavy, good into elites/bosses, with small impact shockwave.
+const BOULDER_PRIORITY_DAMAGE_MULT: float = 1.25
+const BOULDER_IMPACT_RADIUS: float = 60.0
+const BOULDER_IMPACT_DAMAGE_RATIO: float = 0.35
+const BOULDER_IMPACT_STUN: float = 0.10
 
 var projectile: Projectile
 var hit_tracker: Dictionary = {}
@@ -40,7 +47,7 @@ func handle_hit(target: Node) -> void:
 
 	hit_tracker.clear()
 
-	var packet: DamagePacket = _build_projectile_packet()
+	var packet: DamagePacket = _build_projectile_packet(enemy_root)
 
 	if projectile.projectile_type == PowerUpData.ProjectileType.NOVA:
 		_apply_nova(enemy_root, packet)
@@ -50,6 +57,9 @@ func handle_hit(target: Node) -> void:
 
 	_apply_damage_packet(enemy_root, health_component, packet)
 	_apply_packet_status_effects(enemy_root, status_component, packet)
+
+	if projectile.projectile_type == PowerUpData.ProjectileType.BOULDER or bool(projectile.get_meta("boulder_enabled", false)):
+		_apply_boulder_impact(enemy_root, packet)
 
 	if projectile.projectile_type == PowerUpData.ProjectileType.RICOCHET:
 		_apply_bouncing_shot(enemy_root, packet, _get_ricochet_bounce_count())
@@ -80,7 +90,7 @@ func _find_hit_info(target: Node) -> Dictionary:
 	}
 
 
-func _build_projectile_packet() -> DamagePacket:
+func _build_projectile_packet(enemy_root: Node = null) -> DamagePacket:
 	var active_powerups: Array[Dictionary] = []
 
 	if PlayerInventory.has_method("get_active_damage_powerups_with_ranks"):
@@ -93,6 +103,10 @@ func _build_projectile_packet() -> DamagePacket:
 		active_powerups,
 		PlayerInventory.current_wave
 	)
+
+	if enemy_root != null and (projectile.projectile_type == PowerUpData.ProjectileType.BOULDER or bool(projectile.get_meta("boulder_enabled", false))):
+		if enemy_root.is_in_group("bosses") or enemy_root.get_node_or_null("AffixComponent") != null:
+			packet = _make_scaled_packet(packet, BOULDER_PRIORITY_DAMAGE_MULT)
 
 	return packet
 
@@ -156,7 +170,9 @@ func _apply_packet_status_effects(
 				status_component.apply_burn_from_element(amount)
 
 			"ice":
-				status_component.apply_slow(0.25, 2.0, amount)
+				# Uses the current status component slow path.
+				# Ice AoE/freeze can be re-added here once the latest StatusEffectComponent is stable.
+				status_component.apply_slow(0.45, 3.0, amount)
 
 			"lightning":
 				status_component.apply_shock_from_element(amount)
@@ -171,6 +187,47 @@ func _apply_packet_status_effects(
 
 			_:
 				pass
+
+
+func _apply_boulder_impact(enemy_root: Node, original_packet: DamagePacket) -> void:
+	if original_packet == null or original_packet.is_empty():
+		return
+
+	if not enemy_root is Node2D:
+		return
+
+	var origin: Vector2 = (enemy_root as Node2D).global_position
+
+	for nearby in projectile.get_tree().get_nodes_in_group("enemies"):
+		if not is_instance_valid(nearby):
+			continue
+
+		if nearby == enemy_root:
+			continue
+
+		if not nearby is Node2D:
+			continue
+
+		var nearby_2d := nearby as Node2D
+		var dist: float = origin.distance_to(nearby_2d.global_position)
+
+		if dist > BOULDER_IMPACT_RADIUS:
+			continue
+
+		var falloff: float = 1.0 - (dist / BOULDER_IMPACT_RADIUS) * 0.45
+		var shock_packet := _make_scaled_packet(original_packet, BOULDER_IMPACT_DAMAGE_RATIO * falloff)
+		var health_component := nearby.get_node_or_null("HealthComponent")
+
+		if health_component != null and health_component.has_method("take_damage_packet"):
+			health_component.take_damage_packet(shock_packet)
+			_track_packet_hits(nearby, shock_packet, 1.0)
+
+			var status_component := nearby.get_node_or_null("StatusEffectComponent") as StatusEffectComponent
+
+			if status_component != null:
+				status_component.apply_stun(BOULDER_IMPACT_STUN)
+
+	_draw_simple_ring(origin, BOULDER_IMPACT_RADIUS, Color(0.75, 0.55, 0.32, 0.75), 0.22)
 
 
 func _apply_nova(source_enemy: Node, original_packet: DamagePacket) -> void:
@@ -363,7 +420,7 @@ func _get_ricochet_bounce_count() -> int:
 	if ricochet_rank <= 0:
 		return 0
 
-	var count: int = RICOCHET_BASE_BOUNCES + max(0, ricochet_rank - 1) * RICOCHET_BOUNCES_PER_RANK
+	var count: int = RICOCHET_BASE_BOUNCES + max(0, ricochet_rank - 1) * RICOCHET_CHAINS_PER_RANK
 	return clampi(count, 0, RICOCHET_MAX_BOUNCES)
 
 
@@ -459,6 +516,7 @@ func _flush_damage_numbers() -> void:
 func _draw_chain_arc(from_pos: Vector2, to_pos: Vector2) -> void:
 	var line := Line2D.new()
 	line.z_index = 10
+	line.add_to_group("wave_cleanup")
 
 	for i in range(9):
 		var t: float = float(i) / 8.0
@@ -483,6 +541,7 @@ func _draw_chain_arc(from_pos: Vector2, to_pos: Vector2) -> void:
 func _draw_bounce_arc(from_pos: Vector2, to_pos: Vector2) -> void:
 	var line := Line2D.new()
 	line.z_index = 10
+	line.add_to_group("wave_cleanup")
 
 	for i in range(7):
 		var t: float = float(i) / 6.0
@@ -504,5 +563,71 @@ func _draw_bounce_arc(from_pos: Vector2, to_pos: Vector2) -> void:
 	tween.tween_callback(line.queue_free)
 
 
-func _draw_nova_ring(_pos: Vector2, _radius: float) -> void:
-	pass
+func _draw_nova_ring(pos: Vector2, radius: float) -> void:
+	_draw_simple_ring(pos, radius, Color(1.0, 0.85, 0.35, 0.70), 0.28)
+
+
+func _draw_simple_ring(pos: Vector2, radius: float, color: Color, duration: float) -> void:
+	var ring := RingVisual.new()
+	ring.global_position = pos
+	ring.max_radius = radius
+	ring.ring_color = color
+	ring.lifetime = duration
+	ring.add_to_group("wave_cleanup")
+
+	projectile.get_tree().current_scene.add_child(ring)
+
+
+class RingVisual extends Node2D:
+	var max_radius: float = 100.0
+	var ring_color: Color = Color.WHITE
+	var lifetime: float = 0.3
+
+	var _radius: float = 0.0
+	var _alpha: float = 0.8
+
+	func _ready() -> void:
+		z_index = 12
+
+		var tween := create_tween().set_parallel(true)
+
+		tween.tween_method(
+			func(value: float) -> void:
+				_radius = value
+				queue_redraw(),
+			0.0,
+			max_radius,
+			lifetime
+		)
+
+		tween.tween_method(
+			func(value: float) -> void:
+				_alpha = value
+				queue_redraw(),
+			0.8,
+			0.0,
+			lifetime
+		)
+
+		tween.chain().tween_callback(queue_free)
+
+
+	func _draw() -> void:
+		if _radius <= 0.0:
+			return
+
+		draw_circle(
+			Vector2.ZERO,
+			_radius,
+			Color(ring_color.r, ring_color.g, ring_color.b, _alpha * 0.10)
+		)
+
+		draw_arc(
+			Vector2.ZERO,
+			_radius,
+			0.0,
+			TAU,
+			48,
+			Color(ring_color.r, ring_color.g, ring_color.b, _alpha),
+			2.5
+		)

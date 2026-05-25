@@ -336,6 +336,7 @@ zoom = Vector2(0.8, 0.8)
 
 [node name="HealthComponent" type="Node" parent="." unique_id=2006529963]
 script = ExtResource("3_qhqgy")
+max_health = 100000
 
 [node name="HealthBar" type="TextureProgressBar" parent="." unique_id=304607448]
 z_index = 2

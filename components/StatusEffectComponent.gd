@@ -16,12 +16,14 @@ enum EffectType {
 	VIRAL,
 	CRYSTALLIZED,
 	CONTAGION,
+	NEUROTOXIN,
 }
 
 const TINT_STUN: Color = Color(1.3, 1.3, 0.5)
 const TINT_BURN: Color = Color(1.5, 0.5, 0.2)
 const TINT_SHOCK: Color = Color(0.9, 0.8, 1.5)
 const TINT_POISON: Color = Color(0.5, 1.3, 0.3)
+const TINT_NEUROTOXIN: Color = Color(0.35, 1.65, 0.25)
 const TINT_VIRAL: Color = Color(0.7, 1.0, 0.55)
 const TINT_SLOW: Color = Color(0.4, 0.7, 1.4)
 const TINT_CRYSTALLIZED: Color = Color(0.5, 0.9, 1.5)
@@ -43,6 +45,19 @@ const POISON_RAMP_MULT: float = 3.0
 const POISON_DURATION_ADD_ON_REAPPLY: float = 2.0
 const POISON_MAX_DURATION: float = 12.0
 
+# Neurotoxin identity:
+# Permanent, ramping poison that progressively slows the victim.
+const NEUROTOXIN_DAMAGE_MULT: float = 0.08
+const NEUROTOXIN_TICK_RATE: float = 0.75
+const NEUROTOXIN_DAMAGE_RAMP_PER_SECOND: float = 0.08
+const NEUROTOXIN_MAX_DAMAGE_RAMP: float = 5.0
+const NEUROTOXIN_SLOW_START: float = 0.08
+const NEUROTOXIN_SLOW_RAMP_PER_SECOND: float = 0.012
+const NEUROTOXIN_MAX_SLOW: float = 0.55
+const NEUROTOXIN_BOSS_MAX_SLOW: float = 0.28
+const NEUROTOXIN_REAPPLY_DAMAGE_MULT: float = 1.20
+const NEUROTOXIN_REAPPLY_RAMP_BONUS: float = 2.0
+
 const VIRAL_DURATION: float = 5.0
 const VIRAL_DOT_BONUS: float = 0.75
 
@@ -53,12 +68,28 @@ const SPEED_PROPERTIES: Array[String] = [
 	"projectile_speed",
 	"attack_projectile_speed",
 	"burst_speed",
+	"rush_speed",
 	"rush_trail_speed",
 	"rush_impact_speed",
+	"charge_speed",
+	"charge_debris_speed",
+	"charge_impact_speed",
 	"stomp_base_speed",
 	"stomp_speed_step",
 	"stomp_deferred_speed",
+	"slam_base_speed",
+	"slam_speed_step",
+	"slam_cross_speed",
 	"spiral_speed",
+	"boulder_speed",
+	"boulder_fragment_speed",
+	"roar_projectile_speed",
+	"salvo_speed",
+	"cross_base_speed",
+	"cross_speed_step",
+	"fan_speed",
+	"clone_projectile_speed",
+	"shard_speed",
 ]
 
 # These variables get multiplied UP by slow because longer cooldown/interval = slower attacks.
@@ -72,6 +103,27 @@ const INTERVAL_PROPERTIES: Array[String] = [
 	"stomp_fire_interval",
 	"spiral_interval",
 	"rush_trail_interval",
+	"rush_windup_time",
+	"charge_windup_time",
+	"charge_debris_interval",
+	"slam_windup_time",
+	"slam_delay",
+	"boulder_windup_time",
+	"boulder_delay",
+	"roar_windup_time",
+	"shadow_warn_time",
+	"materialize_time",
+	"salvo_interval",
+	"spiral_fire_interval",
+	"cross_delay",
+	"fan_burst_interval",
+	"clone_warning_time",
+	"cooldown_phase1",
+	"cooldown_phase2",
+	"cooldown_phase3",
+	"telegraph_duration",
+	"multi_strike_delay",
+	"phase3_crossfire_delay",
 ]
 
 const STATS_SPEED_PROPERTIES: Array[String] = [
@@ -127,6 +179,8 @@ func _process(delta: float) -> void:
 	if active_effects.is_empty():
 		return
 
+	var slow_state_needs_recalc: bool = false
+
 	for i: int in range(active_effects.size() - 1, -1, -1):
 		var fx: Dictionary = active_effects[i]
 
@@ -135,6 +189,10 @@ func _process(delta: float) -> void:
 		if int(fx["type"]) == EffectType.POISON:
 			fx["ramp_elapsed"] = float(fx.get("ramp_elapsed", 0.0)) + delta
 
+		if int(fx["type"]) == EffectType.NEUROTOXIN:
+			fx["ramp_elapsed"] = float(fx.get("ramp_elapsed", 0.0)) + delta
+			slow_state_needs_recalc = true
+
 		if float(fx["tick_rate"]) > 0.0 and not immune:
 			fx["tick_timer"] = float(fx["tick_timer"]) + delta
 
@@ -142,9 +200,15 @@ func _process(delta: float) -> void:
 				fx["tick_timer"] = float(fx["tick_timer"]) - float(fx["tick_rate"])
 				_on_tick(fx)
 
+		if bool(fx.get("permanent", false)):
+			continue
+
 		if float(fx["elapsed"]) >= float(fx["duration"]):
 			active_effects.remove_at(i)
 			_on_expired(fx)
+
+	if slow_state_needs_recalc:
+		_recalculate_slow_state()
 
 	_update_tint()
 
@@ -164,6 +228,10 @@ func apply_shock_from_element(element_damage: float) -> void:
 
 func apply_poison_from_element(element_damage: float) -> void:
 	apply_poison(element_damage * POISON_DOT_MULT, POISON_DURATION, POISON_TICK_RATE)
+
+
+func apply_neurotoxin_from_combo(element_damage: float) -> void:
+	apply_neurotoxin(element_damage * NEUROTOXIN_DAMAGE_MULT)
 
 
 func apply_burn(damage_per_tick: float, duration: float = BURN_DURATION, tick_rate: float = BURN_TICK_RATE) -> void:
@@ -216,6 +284,16 @@ func apply_poison(base_damage: float, duration: float = POISON_DURATION, tick_ra
 	})
 
 
+func apply_neurotoxin(base_damage: float) -> void:
+	_apply(EffectType.NEUROTOXIN, {
+		"damage": maxf(0.1, base_damage),
+		"duration": 999999.0,
+		"tick_rate": NEUROTOXIN_TICK_RATE,
+		"permanent": true,
+		"slow_percent": NEUROTOXIN_SLOW_START,
+	})
+
+
 func apply_viral(duration: float = VIRAL_DURATION, dot_bonus: float = VIRAL_DOT_BONUS) -> void:
 	_apply(EffectType.VIRAL, {
 		"duration": duration,
@@ -263,6 +341,20 @@ func has_effect(type: EffectType) -> bool:
 	return false
 
 
+func get_regen_multiplier() -> float:
+	if has_effect(EffectType.NEUROTOXIN):
+		return 0.0
+
+	if has_effect(EffectType.POISON):
+		return 0.0
+
+	return 1.0
+
+
+func is_poisoned() -> bool:
+	return has_effect(EffectType.POISON) or has_effect(EffectType.NEUROTOXIN)
+
+
 func clear_all() -> void:
 	for fx: Dictionary in active_effects:
 		_on_expired(fx)
@@ -292,6 +384,10 @@ func _apply(type: EffectType, data: Dictionary) -> void:
 		match type:
 			EffectType.POISON:
 				_refresh_poison(fx, data)
+
+			EffectType.NEUROTOXIN:
+				_refresh_neurotoxin(fx, data)
+
 			_:
 				_refresh_regular_effect(fx, data)
 
@@ -312,6 +408,7 @@ func _apply(type: EffectType, data: Dictionary) -> void:
 		"pulse_pool": float(data.get("pulse_pool", 0.0)),
 		"pulse_interval": float(data.get("pulse_interval", 1.5)),
 		"dot_bonus": float(data.get("dot_bonus", 0.0)),
+		"permanent": bool(data.get("permanent", false)),
 	}
 
 	active_effects.append(fx)
@@ -353,9 +450,22 @@ func _refresh_poison(fx: Dictionary, data: Dictionary) -> void:
 	fx["ramp_elapsed"] = float(fx.get("ramp_elapsed", fx["elapsed"]))
 
 
+func _refresh_neurotoxin(fx: Dictionary, data: Dictionary) -> void:
+	if data.has("damage"):
+		var current_damage: float = float(fx.get("damage", 0.0))
+		var incoming_damage: float = float(data["damage"])
+		fx["damage"] = maxf(current_damage, incoming_damage) * NEUROTOXIN_REAPPLY_DAMAGE_MULT
+
+	fx["permanent"] = true
+	fx["duration"] = 999999.0
+	fx["tick_rate"] = data.get("tick_rate", fx.get("tick_rate", NEUROTOXIN_TICK_RATE))
+	fx["elapsed"] = 0.0
+	fx["ramp_elapsed"] = float(fx.get("ramp_elapsed", 0.0)) + NEUROTOXIN_REAPPLY_RAMP_BONUS
+
+
 func _on_applied(fx: Dictionary) -> void:
 	match int(fx["type"]):
-		EffectType.SLOW, EffectType.STUN, EffectType.CRYSTALLIZED:
+		EffectType.SLOW, EffectType.STUN, EffectType.CRYSTALLIZED, EffectType.NEUROTOXIN:
 			_recalculate_slow_state()
 
 		EffectType.CRYSTALLIZED:
@@ -378,6 +488,14 @@ func _on_tick(fx: Dictionary) -> void:
 			var ramp_progress: float = clampf(ramp_elapsed / POISON_MAX_DURATION, 0.0, 1.0)
 			var ramp: float = 1.0 + ramp_progress * POISON_RAMP_MULT
 			_deal_damage(_get_dot_damage(fx) * ramp, "poison")
+
+		EffectType.NEUROTOXIN:
+			var neuro_elapsed: float = float(fx.get("ramp_elapsed", 0.0))
+			var ramp: float = minf(
+				NEUROTOXIN_MAX_DAMAGE_RAMP,
+				1.0 + neuro_elapsed * NEUROTOXIN_DAMAGE_RAMP_PER_SECOND
+			)
+			_deal_damage(_get_dot_damage(fx) * ramp, "neurotoxin")
 
 
 func _get_dot_damage(fx: Dictionary) -> float:
@@ -403,7 +521,7 @@ func _get_viral_dot_bonus() -> float:
 
 func _on_expired(fx: Dictionary) -> void:
 	match int(fx["type"]):
-		EffectType.SLOW, EffectType.STUN:
+		EffectType.SLOW, EffectType.STUN, EffectType.NEUROTOXIN:
 			_recalculate_slow_state()
 
 		EffectType.CRYSTALLIZED:
@@ -437,7 +555,7 @@ func _deal_damage(amount: float, damage_type: String = "physical") -> void:
 
 
 # ══════════════════════════════════════════════════════════════════════
-# ICE SLOW SUPPORT: MOVEMENT, PROJECTILES, ATTACK SPEED
+# SLOW SUPPORT: MOVEMENT, PROJECTILES, ATTACK SPEED
 # ══════════════════════════════════════════════════════════════════════
 
 func _cache_scalable_values() -> void:
@@ -491,14 +609,31 @@ func _recalculate_slow_state() -> void:
 	for fx: Dictionary in active_effects:
 		match int(fx["type"]):
 			EffectType.STUN, EffectType.CRYSTALLIZED:
-				multiplier = 0.0
-				break
+				multiplier = minf(multiplier, 0.0)
 
 			EffectType.SLOW:
 				var slow_percent: float = clampf(float(fx.get("slow_percent", 0.0)), 0.0, 0.9)
 				multiplier = minf(multiplier, 1.0 - slow_percent)
 
+			EffectType.NEUROTOXIN:
+				var neuro_slow: float = _get_neurotoxin_slow_percent(fx)
+				multiplier = minf(multiplier, 1.0 - neuro_slow)
+
 	_apply_slow_multiplier(multiplier)
+
+
+func _get_neurotoxin_slow_percent(fx: Dictionary) -> float:
+	var ramp_elapsed: float = float(fx.get("ramp_elapsed", 0.0))
+	var slow_cap: float = NEUROTOXIN_MAX_SLOW
+
+	if _parent != null and _parent.is_in_group("bosses"):
+		slow_cap = NEUROTOXIN_BOSS_MAX_SLOW
+
+	return clampf(
+		NEUROTOXIN_SLOW_START + ramp_elapsed * NEUROTOXIN_SLOW_RAMP_PER_SECOND,
+		0.0,
+		slow_cap
+	)
 
 
 func _apply_slow_multiplier(multiplier: float) -> void:
@@ -574,9 +709,9 @@ func _apply_stats_interval_properties(multiplier: float) -> void:
 
 func _get_interval_multiplier(speed_multiplier: float) -> float:
 	if speed_multiplier <= 0.0:
-		return 999.0
+		return 3.0
 
-	return 1.0 / speed_multiplier
+	return minf(3.0, 1.0 / speed_multiplier)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -596,7 +731,7 @@ func apply_combo_effect(damage_type: String, amount: float) -> void:
 		"viral":
 			apply_viral(VIRAL_DURATION, VIRAL_DOT_BONUS)
 		"neurotoxin":
-			apply_contagion(amount, 1.5, 8.0)
+			apply_neurotoxin_from_combo(amount)
 
 
 func apply_thermal(base_damage: float) -> void:
@@ -716,6 +851,9 @@ func _spawn_ground_damage_zone(
 	)
 
 	zone.global_position = position
+	zone.add_to_group("area_effects")
+	zone.add_to_group("wave_cleanup")
+
 	get_tree().current_scene.add_child(zone)
 
 
@@ -897,6 +1035,7 @@ func _update_tint() -> void:
 
 	var priority: Array[int] = [
 		EffectType.STUN,
+		EffectType.NEUROTOXIN,
 		EffectType.SHOCK,
 		EffectType.BURN,
 		EffectType.POISON,
@@ -911,6 +1050,8 @@ func _update_tint() -> void:
 		match effect_type:
 			EffectType.STUN:
 				_sprite.modulate = TINT_STUN
+			EffectType.NEUROTOXIN:
+				_sprite.modulate = TINT_NEUROTOXIN
 			EffectType.SHOCK:
 				_sprite.modulate = TINT_SHOCK
 			EffectType.BURN:
@@ -942,6 +1083,8 @@ func _spawn_combo_visual(color: Color, radius: float) -> void:
 	ring.ring_color = color
 	ring.max_radius = radius
 	ring.global_position = _parent.global_position
+	ring.add_to_group("wave_cleanup")
+
 	get_tree().current_scene.add_child(ring)
 
 
@@ -999,10 +1142,10 @@ class _ComboRing extends Node2D:
 
 		draw_arc(
 			Vector2.ZERO,
-			_radius * 0.5,
+			maxf(1.0, _radius * 0.72),
 			0.0,
 			TAU,
-			32,
-			Color(ring_color.r, ring_color.g, ring_color.b, _alpha * 0.5),
+			48,
+			Color(ring_color.r, ring_color.g, ring_color.b, _alpha * 0.55),
 			1.5
 		)

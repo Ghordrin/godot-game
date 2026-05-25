@@ -61,6 +61,7 @@ func set_gold(amount: int) -> void:
 	gold = amount
 	gold_changed.emit(gold)
 
+
 # ══════════════════════════════════════════════════════════════════════
 # RANK-BASED POWERUP MANAGEMENT
 # ══════════════════════════════════════════════════════════════════════
@@ -125,6 +126,7 @@ func get_powerup_entry(powerup_id: String) -> Dictionary:
 		return collected_powerups[powerup_id]
 
 	return {}
+
 
 # ══════════════════════════════════════════════════════════════════════
 # EQUIPMENT
@@ -222,7 +224,7 @@ func get_equipped_projectile_count() -> int:
 		if powerup_id in collected_powerups:
 			var powerup: PowerUpData = collected_powerups[powerup_id].powerup
 
-			if "projectile_type" in powerup and powerup.projectile_type != PowerUpData.ProjectileType.NONE:
+			if _is_projectile_powerup(powerup):
 				count += 1
 
 	return count
@@ -231,17 +233,118 @@ func get_equipped_projectile_count() -> int:
 func get_active_projectile_powerups() -> Array[PowerUpData]:
 	var result: Array[PowerUpData] = []
 
+	# Permanent equipped projectile comes first.
 	for powerup_id in equipped_powerups:
-		if powerup_id in collected_powerups:
-			var powerup: PowerUpData = collected_powerups[powerup_id].powerup
+		if not powerup_id in collected_powerups:
+			continue
 
-			if "projectile_type" in powerup and powerup.projectile_type != PowerUpData.ProjectileType.NONE:
-				result.append(powerup)
+		var powerup: PowerUpData = collected_powerups[powerup_id].powerup
 
-				if result.size() >= 2:
-					break
+		if not _is_projectile_powerup(powerup):
+			continue
+
+		result.append(powerup)
+
+		if result.size() >= 2:
+			return result
+
+	# Wave-temporary projectile pickups also count as active projectile behavior.
+	# This fixes combat drops like Boulder Shot not applying after pickup.
+	for powerup: PowerUpData in wave_temporary_powerups:
+		if powerup == null:
+			continue
+
+		if not _is_projectile_powerup(powerup):
+			continue
+
+		# Avoid duplicate projectile type stacking for now.
+		if _has_projectile_type(result, powerup.projectile_type):
+			continue
+
+		result.append(powerup)
+
+		if result.size() >= 2:
+			break
 
 	return result
+
+
+func get_active_projectile_powerups_with_ranks() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+
+	for powerup_id in equipped_powerups:
+		if not powerup_id in collected_powerups:
+			continue
+
+		var entry: Dictionary = collected_powerups[powerup_id]
+		var powerup: PowerUpData = entry.powerup
+
+		if not _is_projectile_powerup(powerup):
+			continue
+
+		result.append(entry)
+
+		if result.size() >= 2:
+			return result
+
+	for powerup: PowerUpData in wave_temporary_powerups:
+		if powerup == null:
+			continue
+
+		if not _is_projectile_powerup(powerup):
+			continue
+
+		if _has_projectile_type_from_entries(result, powerup.projectile_type):
+			continue
+
+		result.append({
+			"powerup": powerup,
+			"rank": 1,
+			"temporary": true
+		})
+
+		if result.size() >= 2:
+			break
+
+	return result
+
+
+func _is_projectile_powerup(powerup: PowerUpData) -> bool:
+	if powerup == null:
+		return false
+
+	if not "projectile_type" in powerup:
+		return false
+
+	return powerup.projectile_type != PowerUpData.ProjectileType.NONE
+
+
+func _has_projectile_type(powerups: Array[PowerUpData], projectile_type: int) -> bool:
+	for powerup in powerups:
+		if powerup == null:
+			continue
+
+		if powerup.projectile_type == projectile_type:
+			return true
+
+	return false
+
+
+func _has_projectile_type_from_entries(entries: Array[Dictionary], projectile_type: int) -> bool:
+	for entry in entries:
+		if not entry.has("powerup"):
+			continue
+
+		var powerup: PowerUpData = entry.powerup
+
+		if powerup == null:
+			continue
+
+		if powerup.projectile_type == projectile_type:
+			return true
+
+	return false
+
 
 # ══════════════════════════════════════════════════════════════════════
 # WAVE-TEMPORARY POWERUPS
@@ -251,9 +354,21 @@ func apply_wave_temporary_powerup(powerup: PowerUpData) -> void:
 	if powerup == null:
 		return
 
+	# Avoid duplicate temporary projectile types.
+	# Example: picking up Boulder Shot twice should not silently create weird secondary behavior.
+	if _is_projectile_powerup(powerup):
+		for existing in wave_temporary_powerups:
+			if existing == null:
+				continue
+
+			if _is_projectile_powerup(existing) and existing.projectile_type == powerup.projectile_type:
+				print("Wave-temporary projectile already active: ", powerup.display_name)
+				return
+
 	wave_temporary_powerups.append(powerup)
 	_detect_elemental_combination()
 	wave_temporary_powerups_changed.emit()
+	equipment_changed.emit()
 
 	print("Applied wave-temporary powerup: ", powerup.display_name)
 
@@ -271,6 +386,8 @@ func clear_wave_temporary_powerups() -> void:
 	wave_temporary_powerups.clear()
 	_detect_elemental_combination()
 	wave_temporary_powerups_changed.emit()
+	equipment_changed.emit()
+
 
 # ══════════════════════════════════════════════════════════════════════
 # ELEMENTAL COMBINATION DETECTION
@@ -419,6 +536,7 @@ func _combo_to_elements(combo: ElementalCombo) -> String:
 		_:
 			return ""
 
+
 # ══════════════════════════════════════════════════════════════════════
 # BUILD MANAGEMENT
 # ══════════════════════════════════════════════════════════════════════
@@ -447,3 +565,4 @@ func reset_for_new_run() -> void:
 	clear_equipment()
 	gold_changed.emit(0)
 	wave_temporary_powerups_changed.emit()
+	equipment_changed.emit()

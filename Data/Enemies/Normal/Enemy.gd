@@ -142,6 +142,10 @@ func _on_died() -> void:
 		$Hurtbox.set_deferred("monitoring", false)
 		$Hurtbox.set_deferred("monitorable", false)
 
+	var status_component := get_node_or_null("StatusEffectComponent") as StatusEffectComponent
+	if status_component != null:
+		status_component.on_enemy_death()
+
 	drop_gold.call_deferred()
 	drop_loot.call_deferred()
 	play_death_animation()

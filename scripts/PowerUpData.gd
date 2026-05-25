@@ -75,7 +75,7 @@ enum ProjectileType {
 	NONE,
 	PHASE,
 	BOULDER,
-	RICOCHET,
+	RICOCHET, # Legacy / future modifier. Do not offer as a core projectile.
 	NOVA,
 	HOMING,
 }

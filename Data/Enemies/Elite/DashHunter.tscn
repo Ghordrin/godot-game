@@ -1,0 +1,136 @@
+[gd_scene format=3 uid="uid://c8vbm7fm7soob"]
+
+[ext_resource type="Texture2D" uid="uid://cf104s21qeqrd" path="res://assets/enemies/Tiled_files/Slime1_Attack_body.png" id="1_1g8me"]
+[ext_resource type="Script" uid="uid://b7ecgfusqi6nl" path="res://Data/Enemies/Elite/DashHunter.gd" id="1_opdtc"]
+[ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://components/HealthComponent.gd" id="2_opdtc"]
+[ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://components/StatusEffectComponent.gd" id="3_l8f7s"]
+[ext_resource type="Script" uid="uid://byydxtjfad7ub" path="res://Data/Affixes/AffixComponent.gd" id="4_kexa4"]
+[ext_resource type="Script" uid="uid://c1a1irgpyt41k" path="res://scripts/world_health_bar.gd" id="6_l8f7s"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wcd7e"]
+atlas = ExtResource("1_1g8me")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tly1h"]
+atlas = ExtResource("1_1g8me")
+region = Rect2(64, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ee7hq"]
+atlas = ExtResource("1_1g8me")
+region = Rect2(128, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gwr75"]
+atlas = ExtResource("1_1g8me")
+region = Rect2(192, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_iqmep"]
+atlas = ExtResource("1_1g8me")
+region = Rect2(256, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_oohqu"]
+atlas = ExtResource("1_1g8me")
+region = Rect2(320, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lnjk8"]
+atlas = ExtResource("1_1g8me")
+region = Rect2(384, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_crl8g"]
+atlas = ExtResource("1_1g8me")
+region = Rect2(448, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wywrv"]
+atlas = ExtResource("1_1g8me")
+region = Rect2(512, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_corjx"]
+atlas = ExtResource("1_1g8me")
+region = Rect2(576, 0, 64, 64)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_irl6b"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wcd7e")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tly1h")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ee7hq")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gwr75")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_iqmep")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_oohqu")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lnjk8")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_crl8g")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wywrv")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_corjx")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_c5hp5"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_opdtc"]
+radius = 16.0
+height = 32.0
+
+[node name="DashHunter" type="CharacterBody2D" unique_id=1519048041]
+scale = Vector2(3.2000017, 3.0000012)
+script = ExtResource("1_opdtc")
+dash_windup_time = 0.24
+dash_speed = 560.0
+dash_distance = 320.0
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2061056684]
+texture_filter = 1
+sprite_frames = SubResource("SpriteFrames_irl6b")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1439170889]
+shape = SubResource("RectangleShape2D_c5hp5")
+
+[node name="HealthComponent" type="Node" parent="." unique_id=2122043465]
+script = ExtResource("2_opdtc")
+max_health = 35
+metadata/_custom_type_script = "uid://6dttfeskycuk"
+
+[node name="StatusEffectComponent" type="Node" parent="." unique_id=1499245804]
+script = ExtResource("3_l8f7s")
+metadata/_custom_type_script = "uid://dn6lad6evss5"
+
+[node name="AffixComponent" type="Node" parent="." unique_id=1116859153]
+script = ExtResource("4_kexa4")
+metadata/_custom_type_script = "uid://byydxtjfad7ub"
+
+[node name="Hurtbox" type="Area2D" parent="." unique_id=154927162 groups=["enemies"]]
+collision_layer = 2
+collision_mask = 4
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=1439836212]
+shape = SubResource("CapsuleShape2D_opdtc")
+
+[node name="WorldHealthBar" type="TextureProgressBar" parent="." unique_id=446846207 node_paths=PackedStringArray("health_component")]
+offset_left = -19.0
+offset_top = -28.0
+offset_right = 21.0
+offset_bottom = 12.0
+scale = Vector2(1.0877796, 0.3308615)
+script = ExtResource("6_l8f7s")
+health_component = NodePath("../HealthComponent")
+metadata/_custom_type_script = "uid://c1a1irgpyt41k"

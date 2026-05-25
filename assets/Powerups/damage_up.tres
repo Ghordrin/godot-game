@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_e7vyu")
-id = "damge_up"
+id = "damage_up"
 display_name = "Damage"
 description = "Increases the damage"
 stat_to_modify = "damage"

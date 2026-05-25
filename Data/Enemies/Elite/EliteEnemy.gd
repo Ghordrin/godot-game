@@ -101,14 +101,18 @@ func drop_loot() -> void:
 
 
 func _on_died() -> void:
-	target   = null
+	target = null
 	velocity = Vector2.ZERO
 
 	collision.set_deferred("disabled", true)
 
 	if has_node("Hurtbox"):
-		$Hurtbox.set_deferred("monitoring",    false)
-		$Hurtbox.set_deferred("monitorable",   false)
+		$Hurtbox.set_deferred("monitoring", false)
+		$Hurtbox.set_deferred("monitorable", false)
+
+	var status_component := get_node_or_null("StatusEffectComponent") as StatusEffectComponent
+	if status_component != null:
+		status_component.on_enemy_death()
 
 	drop_gold.call_deferred()
 	drop_loot.call_deferred()
@@ -116,6 +120,7 @@ func _on_died() -> void:
 
 	if animated_sprite.sprite_frames != null and animated_sprite.sprite_frames.has_animation("death"):
 		await animated_sprite.animation_finished
+
 	queue_free()
 
 
