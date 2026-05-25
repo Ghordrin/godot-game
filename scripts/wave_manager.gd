@@ -129,9 +129,6 @@ var elites_spawned_this_chapter: int = 0
 var boss_spawned_this_chapter: bool = false
 var chapter_spawn_flow_finished: bool = false
 
-# ══════════════════════════════════════════════════════════════════════
-# LIFECYCLE
-# ══════════════════════════════════════════════════════════════════════
 
 func _ready() -> void:
 	_setup_shop_ui()
@@ -177,9 +174,6 @@ func _setup_countdown_ui() -> void:
 	if not countdown_ui.countdown_finished.is_connected(_on_countdown_finished):
 		countdown_ui.countdown_finished.connect(_on_countdown_finished)
 
-# ══════════════════════════════════════════════════════════════════════
-# PUBLIC API
-# ══════════════════════════════════════════════════════════════════════
 
 func start_next_wave() -> void:
 	start_next_chapter()
@@ -220,9 +214,6 @@ func get_wave_info() -> Dictionary:
 		"chapter_progress": _get_chapter_progress(),
 	}
 
-# ══════════════════════════════════════════════════════════════════════
-# CHAPTER FLOW
-# ══════════════════════════════════════════════════════════════════════
 
 func _can_start_next_chapter() -> bool:
 	return state == State.WAITING or state == State.BETWEEN_CHAPTERS
@@ -230,6 +221,7 @@ func _can_start_next_chapter() -> bool:
 
 func _run_chapter() -> void:
 	total_spawned = 0
+	alive_enemies.clear()
 	enemy_count_changed.emit(alive_enemies.size(), total_spawned)
 
 	for segment_index in range(1, segments_per_chapter + 1):
@@ -263,6 +255,8 @@ func _finish_chapter_if_ready() -> void:
 
 	if not chapter_spawn_flow_finished:
 		return
+
+	_cleanup_alive_enemy_list()
 
 	if not alive_enemies.is_empty():
 		return
@@ -304,13 +298,6 @@ func _on_countdown_finished() -> void:
 
 
 func _open_starting_shop() -> void:
-	if shop_ui == null:
-		return
-
-	if loot_table == null:
-		push_warning("WaveManager: loot_table not assigned, starting projectile shop cannot open correctly.")
-		return
-
 	shop_ui.open_shop(0, loot_table, "starter_projectile")
 	await shop_ui.shop_closed
 
@@ -386,9 +373,6 @@ func _get_chapter_progress() -> float:
 
 	return completed_steps / total_steps
 
-# ══════════════════════════════════════════════════════════════════════
-# CHAPTER / VIRTUAL WAVE DATA
-# ══════════════════════════════════════════════════════════════════════
 
 func _get_virtual_wave_for_segment(segment_index: int) -> int:
 	var chapter_start_wave: int = ((current_chapter - 1) * virtual_waves_per_chapter) + 1
@@ -451,9 +435,6 @@ func _get_unlocked_enemy_scenes(wave_num: int) -> Array[PackedScene]:
 
 	return unlocked
 
-# ══════════════════════════════════════════════════════════════════════
-# SPAWNING
-# ══════════════════════════════════════════════════════════════════════
 
 func _spawn_segment(segment_data: Dictionary) -> void:
 	state = State.SPAWNING
@@ -571,14 +552,29 @@ func _spawn_enemy(
 		push_warning("WaveManager: tried to spawn a null enemy scene.")
 		return
 
-	var enemy := scene.instantiate() as Node2D
+	var enemy: Node2D = null
+	var spawn_position: Vector2 = _get_random_spawn_position()
+
+	if not is_boss and not is_elite:
+		var enemy_manager := get_node_or_null("/root/EnemyManager")
+
+		if enemy_manager != null and enemy_manager.has_method("spawn_enemy"):
+			enemy = enemy_manager.spawn_enemy(scene, get_tree().current_scene, spawn_position)
 
 	if enemy == null:
-		push_warning("WaveManager: enemy scene root is not Node2D.")
-		return
+		enemy = scene.instantiate() as Node2D
 
-	enemy.global_position = _get_random_spawn_position()
-	get_tree().current_scene.add_child(enemy)
+		if enemy == null:
+			push_warning("WaveManager: enemy scene root is not Node2D.")
+			return
+
+		enemy.global_position = spawn_position
+		get_tree().current_scene.add_child(enemy)
+
+		var enemy_manager_fallback := get_node_or_null("/root/EnemyManager")
+
+		if enemy_manager_fallback != null and enemy_manager_fallback.has_method("register_enemy"):
+			enemy_manager_fallback.register_enemy(enemy)
 
 	_apply_spawn_setup(enemy)
 	_apply_enemy_scaling(enemy, health_mult, damage_mult, speed_mult, gold_mult)
@@ -659,9 +655,6 @@ func _get_elite_chance(wave_num: int) -> float:
 		elite_max_chance
 	)
 
-# ══════════════════════════════════════════════════════════════════════
-# ENEMY SETUP / SCALING
-# ══════════════════════════════════════════════════════════════════════
 
 func _apply_spawn_setup(enemy: Node2D) -> void:
 	var players := get_tree().get_nodes_in_group("player")
@@ -731,6 +724,8 @@ func _apply_enemy_visuals(enemy: Node2D, is_boss: bool, is_elite: bool) -> void:
 		(sprite as AnimatedSprite2D).modulate = Color(1.2, 0.8, 0.8)
 	elif is_elite:
 		(sprite as AnimatedSprite2D).modulate = Color(1.15, 1.0, 0.65)
+	else:
+		(sprite as AnimatedSprite2D).modulate = Color.WHITE
 
 
 func _apply_elite_affixes(enemy: Node2D) -> void:
@@ -761,9 +756,47 @@ func _get_elite_affix_count() -> int:
 
 
 func _track_enemy(enemy: Node2D) -> void:
+	if enemy in alive_enemies:
+		return
+
 	alive_enemies.append(enemy)
-	enemy.tree_exiting.connect(_on_enemy_died.bind(enemy))
+
+	if not enemy.tree_exiting.is_connected(_on_enemy_tree_exiting.bind(enemy)):
+		enemy.tree_exiting.connect(_on_enemy_tree_exiting.bind(enemy))
+
+	if enemy.has_node("HealthComponent"):
+		var health_component := enemy.get_node("HealthComponent") as HealthComponent
+
+		if health_component != null and not health_component.died.is_connected(_on_enemy_health_died.bind(enemy)):
+			health_component.died.connect(_on_enemy_health_died.bind(enemy))
+
 	enemy_count_changed.emit(alive_enemies.size(), total_spawned)
+
+
+func _on_enemy_health_died(enemy: Node2D) -> void:
+	alive_enemies.erase(enemy)
+	enemy_count_changed.emit(alive_enemies.size(), total_spawned)
+	_finish_chapter_if_ready()
+
+
+func _on_enemy_tree_exiting(enemy: Node2D) -> void:
+	alive_enemies.erase(enemy)
+	enemy_count_changed.emit(alive_enemies.size(), total_spawned)
+	_finish_chapter_if_ready()
+
+
+func _cleanup_alive_enemy_list() -> void:
+	for i in range(alive_enemies.size() - 1, -1, -1):
+		var enemy: Node2D = alive_enemies[i]
+
+		if not is_instance_valid(enemy):
+			alive_enemies.remove_at(i)
+			continue
+
+		var health := enemy.get_node_or_null("HealthComponent") as HealthComponent
+
+		if health != null and health.is_dead:
+			alive_enemies.remove_at(i)
 
 
 func _get_random_spawn_position() -> Vector2:
@@ -779,13 +812,3 @@ func _get_random_spawn_position() -> Vector2:
 	var dist := randf_range(spawn_radius * 0.6, spawn_radius)
 
 	return center + Vector2(cos(angle), sin(angle)) * dist
-
-# ══════════════════════════════════════════════════════════════════════
-# ENEMY DEATH
-# ══════════════════════════════════════════════════════════════════════
-
-func _on_enemy_died(enemy: Node2D) -> void:
-	alive_enemies.erase(enemy)
-	enemy_count_changed.emit(alive_enemies.size(), total_spawned)
-
-	_finish_chapter_if_ready()

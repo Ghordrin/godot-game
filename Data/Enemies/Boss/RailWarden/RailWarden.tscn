@@ -21,8 +21,11 @@ animations = [{
 }]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_nfnfi"]
-radius = 16.0
-height = 32.0
+radius = 61.68
+height = 177.9908
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_23een"]
+radius = 3.4240716
 
 [node name="RailWarden" type="CharacterBody2D" unique_id=63450376]
 script = ExtResource("1_nfnfi")
@@ -33,6 +36,9 @@ scale = Vector2(9.09533, 8.58385)
 sprite_frames = SubResource("SpriteFrames_23een")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1998568939]
+position = Vector2(3, 26)
+rotation = 1.5689824
+shape = SubResource("CapsuleShape2D_nfnfi")
 
 [node name="StatusEffectComponent" type="Node" parent="." unique_id=385840509]
 script = ExtResource("1_67xn2")
@@ -47,4 +53,7 @@ collision_layer = 2
 collision_mask = 4
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=1868978488]
-shape = SubResource("CapsuleShape2D_nfnfi")
+position = Vector2(8.000004, 24)
+rotation = 1.5632534
+scale = Vector2(15.035313, -23.886665)
+shape = SubResource("CircleShape2D_23een")

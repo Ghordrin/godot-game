@@ -23,16 +23,13 @@ var force_powerup_drop: bool = false
 var is_wave_temporary_drop: bool = true
 
 var _is_dying: bool = false
-var _has_queued_free: bool = false
+var _is_pooled: bool = false
+var _base_move_speed: float = 75.0
 
 
 func _ready() -> void:
 	add_to_group("enemies")
-
-	var enemy_manager := get_node_or_null("/root/EnemyManager")
-
-	if enemy_manager != null and enemy_manager.has_method("register_enemy"):
-		enemy_manager.register_enemy(self)
+	_base_move_speed = move_speed
 
 	if health_component != null and not health_component.died.is_connected(_on_died):
 		health_component.died.connect(_on_died)
@@ -40,14 +37,10 @@ func _ready() -> void:
 	_acquire_target()
 
 
-func _exit_tree() -> void:
-	var enemy_manager := get_node_or_null("/root/EnemyManager")
-
-	if enemy_manager != null and enemy_manager.has_method("unregister_enemy"):
-		enemy_manager.unregister_enemy(self)
-
-
 func _physics_process(_delta: float) -> void:
+	if _is_pooled:
+		return
+
 	if _is_dying or health_component.is_dead:
 		velocity = Vector2.ZERO
 		move_and_slide()
@@ -85,6 +78,67 @@ func set_powerup_drop_context(
 	is_wave_temporary_drop = new_is_wave_temporary
 
 
+func revive_from_pool(spawn_position: Vector2) -> void:
+	_is_pooled = false
+	_is_dying = false
+
+	global_position = spawn_position
+	velocity = Vector2.ZERO
+	last_direction = Vector2.DOWN
+	target = null
+
+	show()
+	set_process(true)
+	set_physics_process(true)
+
+	move_speed = _base_move_speed
+
+	if collision != null:
+		collision.set_deferred("disabled", false)
+
+	if has_node("Hurtbox"):
+		$Hurtbox.set_deferred("monitoring", true)
+		$Hurtbox.set_deferred("monitorable", true)
+
+	if health_component != null:
+		health_component.revive()
+
+	var status_component := get_node_or_null("StatusEffectComponent") as StatusEffectComponent
+
+	if status_component != null:
+		status_component.clear_all()
+
+	if animated_sprite != null:
+		animated_sprite.modulate = Color.WHITE
+		play_idle_animation()
+
+
+func prepare_for_pool() -> void:
+	_is_pooled = true
+	_is_dying = false
+
+	target = null
+	velocity = Vector2.ZERO
+
+	hide()
+	set_process(false)
+	set_physics_process(false)
+
+	if collision != null:
+		collision.set_deferred("disabled", true)
+
+	if has_node("Hurtbox"):
+		$Hurtbox.set_deferred("monitoring", false)
+		$Hurtbox.set_deferred("monitorable", false)
+
+	var status_component := get_node_or_null("StatusEffectComponent") as StatusEffectComponent
+
+	if status_component != null:
+		status_component.clear_all()
+
+	global_position = Vector2(-100000.0, -100000.0)
+
+
 func _acquire_target() -> void:
 	var players := get_tree().get_nodes_in_group("player")
 
@@ -110,13 +164,11 @@ func follow_target() -> void:
 
 
 func drop_gold() -> void:
-	## Compatibility method for older callers.
 	var payload := _build_death_payload()
 	_spawn_gold_from_payload(payload)
 
 
 func drop_loot() -> void:
-	## Compatibility method for older callers.
 	var payload := _build_death_payload()
 	_spawn_loot_from_payload(payload)
 
@@ -142,7 +194,6 @@ func _on_died() -> void:
 	var status_component := get_node_or_null("StatusEffectComponent") as StatusEffectComponent
 
 	if status_component != null:
-		## Kept immediate for now because status death effects may depend on this enemy still existing.
 		status_component.on_enemy_death()
 
 	var payload := _build_death_payload()
@@ -154,25 +205,14 @@ func _on_died() -> void:
 		_spawn_gold_from_payload(payload)
 		_spawn_loot_from_payload(payload)
 
-	play_death_animation()
-
-	if animated_sprite != null:
-		if animated_sprite.sprite_frames != null and animated_sprite.sprite_frames.has_animation("death"):
-			await animated_sprite.animation_finished
-
-	_queue_free_via_enemy_manager()
-
-
-func _queue_free_via_enemy_manager() -> void:
-	if _has_queued_free:
-		return
-
-	_has_queued_free = true
+	## For pooled swarm enemies, hide immediately.
+	## A pooled death effect can be added later.
+	hide()
 
 	var enemy_manager := get_node_or_null("/root/EnemyManager")
 
-	if enemy_manager != null and enemy_manager.has_method("queue_enemy_free"):
-		enemy_manager.queue_enemy_free(self)
+	if enemy_manager != null and enemy_manager.has_method("recycle_enemy"):
+		enemy_manager.recycle_enemy(self)
 	else:
 		queue_free()
 
