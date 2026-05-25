@@ -23,15 +23,28 @@ var force_powerup_drop: bool = false
 var is_wave_temporary_drop: bool = true
 
 var _is_dying: bool = false
+var _has_queued_free: bool = false
 
 
 func _ready() -> void:
 	add_to_group("enemies")
 
+	var enemy_manager := get_node_or_null("/root/EnemyManager")
+
+	if enemy_manager != null and enemy_manager.has_method("register_enemy"):
+		enemy_manager.register_enemy(self)
+
 	if health_component != null and not health_component.died.is_connected(_on_died):
 		health_component.died.connect(_on_died)
 
 	_acquire_target()
+
+
+func _exit_tree() -> void:
+	var enemy_manager := get_node_or_null("/root/EnemyManager")
+
+	if enemy_manager != null and enemy_manager.has_method("unregister_enemy"):
+		enemy_manager.unregister_enemy(self)
 
 
 func _physics_process(_delta: float) -> void:
@@ -97,15 +110,13 @@ func follow_target() -> void:
 
 
 func drop_gold() -> void:
-	## Kept for compatibility with older scripts.
-	## Normal enemy death now uses DeathQueue payloads.
+	## Compatibility method for older callers.
 	var payload := _build_death_payload()
 	_spawn_gold_from_payload(payload)
 
 
 func drop_loot() -> void:
-	## Kept for compatibility with older scripts.
-	## Normal enemy death now uses DeathQueue payloads.
+	## Compatibility method for older callers.
 	var payload := _build_death_payload()
 	_spawn_loot_from_payload(payload)
 
@@ -118,6 +129,9 @@ func _on_died() -> void:
 	target = null
 	velocity = Vector2.ZERO
 
+	set_physics_process(false)
+	set_process(false)
+
 	if collision != null:
 		collision.set_deferred("disabled", true)
 
@@ -128,25 +142,39 @@ func _on_died() -> void:
 	var status_component := get_node_or_null("StatusEffectComponent") as StatusEffectComponent
 
 	if status_component != null:
-		## Keep this immediate for now because many status death effects likely depend on the enemy still existing.
-		## Later we can convert status on-death effects into payloads too.
+		## Kept immediate for now because status death effects may depend on this enemy still existing.
 		status_component.on_enemy_death()
 
-	play_death_animation()
-
 	var payload := _build_death_payload()
+	var death_queue := get_node_or_null("/root/DeathQueue")
 
-	if DeathQueue != null and DeathQueue.has_method("enqueue_enemy_death"):
-		DeathQueue.enqueue_enemy_death(payload)
+	if death_queue != null and death_queue.has_method("enqueue_enemy_death"):
+		death_queue.enqueue_enemy_death(payload)
 	else:
 		_spawn_gold_from_payload(payload)
 		_spawn_loot_from_payload(payload)
+
+	play_death_animation()
 
 	if animated_sprite != null:
 		if animated_sprite.sprite_frames != null and animated_sprite.sprite_frames.has_animation("death"):
 			await animated_sprite.animation_finished
 
-	queue_free()
+	_queue_free_via_enemy_manager()
+
+
+func _queue_free_via_enemy_manager() -> void:
+	if _has_queued_free:
+		return
+
+	_has_queued_free = true
+
+	var enemy_manager := get_node_or_null("/root/EnemyManager")
+
+	if enemy_manager != null and enemy_manager.has_method("queue_enemy_free"):
+		enemy_manager.queue_enemy_free(self)
+	else:
+		queue_free()
 
 
 func _build_death_payload() -> Dictionary:

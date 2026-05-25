@@ -7,6 +7,7 @@ class_name GoldPickup
 
 func _ready() -> void:
 	label.text = str(gold_amount) + " gold"
+	add_to_group("gold_pickups")
 
 func _on_body_entered(body: Node) -> void:
 	if not body.is_in_group("player"):

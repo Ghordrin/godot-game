@@ -24,6 +24,9 @@ DebugFPSCounter="*res://scripts/debug_fps_counter.gd"
 EnemyRegistry="*uid://cm2l6qkbqlom3"
 CombatDebugLogger="*uid://bfp8chepokpjs"
 DeathQueue="*uid://dmkn2vbdvw0vs"
+PerformanceDebugMonitor="*uid://cmbp4ncuukjbt"
+GoldDropManager="*uid://c3yete4ht5fnq"
+EnemyManager="*uid://c4ktgtylx6621"
 
 [display]
 

@@ -29,6 +29,8 @@ func _ready() -> void:
 
 	if pickup_sound != null:
 		pickup_sound.play()
+		
+	add_to_group("powerup_pickups")
 
 
 func _on_body_entered(body: Node2D) -> void:

@@ -111,6 +111,7 @@ func _build_projectile_packet(enemy_root: Node = null) -> DamagePacket:
 	return packet
 
 
+
 func _apply_damage_packet(enemy_root: Node, health_component: Node, packet: DamagePacket) -> void:
 	if packet == null or packet.is_empty():
 		return

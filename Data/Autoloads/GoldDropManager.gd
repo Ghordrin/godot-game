@@ -1,5 +1,4 @@
 extends Node
-class_name GoldDropManager
 
 ## Handles gold drop aggregation and spawn throttling.
 ## DeathWorkQueue should forward gold payloads here instead of spawning gold itself.
@@ -51,6 +50,8 @@ func clear() -> void:
 func _process(_delta: float) -> void:
 	_process_gold_payloads()
 
+func get_pending_count() -> int:
+	return _gold_payloads.size()
 
 func _process_gold_payloads() -> void:
 	if _gold_payloads.is_empty():
