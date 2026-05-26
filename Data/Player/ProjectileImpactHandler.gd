@@ -22,14 +22,14 @@ const RICOCHET_MAX_BOUNCES: int = 6
 # gets a small bonus into bosses/elites, and applies a short capped stagger.
 const BOULDER_PRIORITY_DAMAGE_MULT: float = 1.18
 const BOULDER_LANDING_RADIUS: float = 48.0
-const BOULDER_RADIUS_PER_IMPACT_RANK: float = 8.0
-const BOULDER_RADIUS_PER_METEOR_RANK: float = 4.0
+const BOULDER_RADIUS_PER_RANK: float = 14.0
+const BOULDER_RADIUS_PER_METEOR_RANK: float = 8.0
 
 const BOULDER_BASE_STAGGER_DURATION: float = 0.06
-const BOULDER_STAGGER_PER_IMPACT_RANK: float = 0.015
-const BOULDER_STAGGER_PER_METEOR_RANK: float = 0.025
-const BOULDER_PRIORITY_STAGGER_MULT: float = 1.10
-const BOULDER_MAX_STAGGER_DURATION: float = 0.18
+const BOULDER_STAGGER_PER_RANK: float = 0.030
+const BOULDER_STAGGER_PER_METEOR_RANK: float = 0.040
+const BOULDER_PRIORITY_STAGGER_MULT: float = 1.15
+const BOULDER_MAX_STAGGER_DURATION: float = 0.28
 
 var projectile: Projectile
 var hit_tracker: Dictionary = {}
@@ -56,8 +56,18 @@ func handle_hit(target: Node) -> void:
 
 	var packet: DamagePacket = _build_projectile_packet(enemy_root)
 
+	var target_was_alive: bool = _is_target_alive(enemy_root)
+
 	if projectile.projectile_type == PowerUpData.ProjectileType.NOVA:
 		_apply_nova(enemy_root, packet)
+		var wave_rank: int = int(projectile.get_meta("nova_pressure_wave_rank", 0))
+		if wave_rank > 0 and enemy_root is Node2D:
+			_spawn_pressure_wave(
+				(enemy_root as Node2D).global_position,
+				projectile.nova_radius,
+				float(projectile.damage),
+				wave_rank
+			)
 		_flush_damage_numbers()
 		projectile.queue_free()
 		return
@@ -67,6 +77,12 @@ func handle_hit(target: Node) -> void:
 
 	if _is_boulder_projectile():
 		_apply_boulder_stagger(enemy_root, status_component)
+
+	if projectile.projectile_type == PowerUpData.ProjectileType.HOMING:
+		var swarm_rank: int = int(projectile.get_meta("homing_seeker_swarm_rank", 0))
+		var is_child_seeker: bool = bool(projectile.get_meta("is_seeker_swarm_child", false))
+		if swarm_rank > 0 and not is_child_seeker and target_was_alive:
+			_spawn_seeker_swarm(enemy_root, swarm_rank, packet)
 
 	if projectile.projectile_type == PowerUpData.ProjectileType.RICOCHET:
 		_apply_bouncing_shot(enemy_root, packet, _get_ricochet_bounce_count())
@@ -90,11 +106,11 @@ func handle_boulder_landing(landing_position: Vector2) -> void:
 	var packet: DamagePacket = _build_projectile_packet(null)
 
 	var size_mult: float = float(projectile.get_meta("boulder_size_mult", 1.0))
-	var impact_rank: int = int(projectile.get_meta("boulder_impact_rank", 0))
+	var boulder_rank: int = int(projectile.get_meta("boulder_rank", 1))
 	var meteor_rank: int = int(projectile.get_meta("boulder_meteor_rank", 0))
 
 	var landing_radius: float = BOULDER_LANDING_RADIUS * size_mult
-	landing_radius += float(impact_rank) * BOULDER_RADIUS_PER_IMPACT_RANK
+	landing_radius += float(boulder_rank - 1) * BOULDER_RADIUS_PER_RANK
 	landing_radius += float(meteor_rank) * BOULDER_RADIUS_PER_METEOR_RANK
 
 	for enemy in projectile.get_tree().get_nodes_in_group("enemies"):
@@ -129,8 +145,9 @@ func handle_boulder_landing(landing_position: Vector2) -> void:
 		var status_component := enemy.get_node_or_null("StatusEffectComponent") as StatusEffectComponent
 
 		if status_component != null:
-			var stagger_duration := _get_boulder_stagger_duration(enemy, impact_rank, meteor_rank)
+			var stagger_duration := _get_boulder_stagger_duration(enemy, boulder_rank, meteor_rank)
 			status_component.apply_stun(stagger_duration)
+			_apply_packet_status_effects(enemy, status_component, hit_packet)
 
 	_flush_damage_numbers()
 	_draw_simple_ring(landing_position, landing_radius, Color(0.75, 0.55, 0.32, 0.75), 0.22)
@@ -253,22 +270,27 @@ func _apply_boulder_stagger(enemy_root: Node, status_component: StatusEffectComp
 	if status_component == null:
 		return
 
-	var impact_rank: int = int(projectile.get_meta("boulder_impact_rank", 0))
-	var meteor_rank: int = int(projectile.get_meta("boulder_meteor_rank", 0))
-	var stagger_duration := _get_boulder_stagger_duration(enemy_root, impact_rank, meteor_rank)
+	var boulder_rank: int = int(projectile.get_meta("boulder_rank", 1))
+	var meteor_rank: int  = int(projectile.get_meta("boulder_meteor_rank", 0))
+	var stagger_duration := _get_boulder_stagger_duration(enemy_root, boulder_rank, meteor_rank)
 
 	status_component.apply_stun(stagger_duration)
 
 
-func _get_boulder_stagger_duration(enemy_root: Node, impact_rank: int, meteor_rank: int) -> float:
+func _get_boulder_stagger_duration(enemy_root: Node, boulder_rank: int, meteor_rank: int) -> float:
 	var stagger_duration: float = BOULDER_BASE_STAGGER_DURATION
-	stagger_duration += float(impact_rank) * BOULDER_STAGGER_PER_IMPACT_RANK
+	stagger_duration += float(boulder_rank - 1) * BOULDER_STAGGER_PER_RANK
 	stagger_duration += float(meteor_rank) * BOULDER_STAGGER_PER_METEOR_RANK
 
 	if _is_priority_target(enemy_root):
 		stagger_duration *= BOULDER_PRIORITY_STAGGER_MULT
 
 	return minf(stagger_duration, BOULDER_MAX_STAGGER_DURATION)
+
+
+func _is_target_alive(enemy_root: Node) -> bool:
+	var hc := enemy_root.get_node_or_null("HealthComponent")
+	return hc != null and not bool(hc.get("is_dead"))
 
 
 func _is_boulder_projectile() -> bool:
@@ -572,6 +594,37 @@ func _flush_damage_numbers() -> void:
 	hit_tracker.clear()
 
 
+func _spawn_seeker_swarm(_dead_enemy: Node, swarm_rank: int, _original_packet: DamagePacket) -> void:
+	var pool := _get_or_create_orbital_pool()
+	if pool == null:
+		return
+	pool.add_orbitals(1 + swarm_rank, swarm_rank)  # rank 1=2, rank 5=6
+
+
+func _get_or_create_orbital_pool() -> OrbitalSeekerPool:
+	var players := projectile.get_tree().get_nodes_in_group("player")
+	if players.is_empty():
+		return null
+	var player: Node = players[0]
+	var pool := player.get_node_or_null("OrbitalSeekerPool") as OrbitalSeekerPool
+	if pool == null:
+		pool = OrbitalSeekerPool.new()
+		pool.name = "OrbitalSeekerPool"
+		player.add_child(pool)
+	return pool
+
+
+func _spawn_pressure_wave(pos: Vector2, radius: float, base_damage: float, wave_rank: int) -> void:
+	var zone := _PressureZone.new()
+	zone.global_position = pos
+	zone.zone_radius = radius
+	zone.duration = 1.5 + float(wave_rank - 1) * 0.5
+	zone.tick_interval = 0.65 - float(wave_rank - 1) * 0.05
+	zone.tick_damage = base_damage * (0.12 + float(wave_rank - 1) * 0.04)
+	zone.add_to_group("wave_cleanup")
+	projectile.get_tree().current_scene.add_child(zone)
+
+
 func _draw_chain_arc(from_pos: Vector2, to_pos: Vector2) -> void:
 	var line := Line2D.new()
 	line.z_index = 10
@@ -690,3 +743,46 @@ class RingVisual extends Node2D:
 			Color(ring_color.r, ring_color.g, ring_color.b, _alpha),
 			2.5
 		)
+
+
+class _PressureZone extends Node2D:
+	var zone_radius: float  = 115.0
+	var tick_damage: float  = 20.0
+	var tick_interval: float = 0.6
+	var duration: float     = 2.0
+
+	var _elapsed: float      = 0.0
+	var _tick_elapsed: float = 0.0
+
+	func _ready() -> void:
+		z_index = 5
+
+	func _process(delta: float) -> void:
+		_elapsed += delta
+		_tick_elapsed += delta
+		queue_redraw()
+
+		if _elapsed >= duration:
+			queue_free()
+			return
+
+		if _tick_elapsed >= tick_interval:
+			_tick_elapsed -= tick_interval
+			_deal_tick_damage()
+
+	func _deal_tick_damage() -> void:
+		for enemy in get_tree().get_nodes_in_group("enemies"):
+			if not is_instance_valid(enemy) or not enemy is Node2D:
+				continue
+			var dist: float = global_position.distance_to((enemy as Node2D).global_position)
+			if dist > zone_radius:
+				continue
+			var hc := enemy.get_node_or_null("HealthComponent")
+			if hc != null and hc.has_method("take_damage"):
+				hc.take_damage(int(tick_damage), "physical")
+
+	func _draw() -> void:
+		var progress: float = 1.0 - _elapsed / duration
+		draw_circle(Vector2.ZERO, zone_radius, Color(0.55, 0.80, 1.0, progress * 0.12))
+		draw_arc(Vector2.ZERO, zone_radius, 0.0, TAU, 48,
+			Color(0.55, 0.80, 1.0, progress * 0.55), 2.0)

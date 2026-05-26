@@ -11,6 +11,11 @@ const STARTER_ICE_DAMAGE_MULT: float = 0.90
 const STARTER_LIGHTNING_DAMAGE_MULT: float = 0.70
 const STARTER_POISON_DAMAGE_MULT: float = 1.00
 
+# Per-wave multiplier applied to all element damage (DoTs scale with this automatically).
+const ELEMENT_WAVE_SCALE: float = 0.03
+# Bonus multiplier rewarding two-element investment over solo elements.
+const COMBO_BONUS_MULT: float = 1.50
+
 
 static func build_projectile_packet(base_damage: float, equipped_powerups: Array, current_wave: int) -> DamagePacket:
 	var packet := DamagePacket.new()
@@ -19,6 +24,7 @@ static func build_projectile_packet(base_damage: float, equipped_powerups: Array
 	packet.add_debug("[DMG] base physical=%.1f" % base_damage)
 
 	var elements: Dictionary = {}
+	var wave_element_mult: float = 1.0 + float(maxi(0, current_wave - 1)) * ELEMENT_WAVE_SCALE
 
 	for entry in equipped_powerups:
 		if not entry.has("powerup") or not entry.has("rank"):
@@ -30,23 +36,29 @@ static func build_projectile_packet(base_damage: float, equipped_powerups: Array
 		if powerup == null:
 			continue
 
-		if powerup.element_type == PowerUpData.ElementType.NONE:
+		if powerup.element_type == PowerUpData.ElementType.NONE and \
+				powerup.element_type_b == PowerUpData.ElementType.NONE:
 			continue
 
 		rank = max(1, rank)
 
-		var element_damage: float = base_damage * powerup.amount * float(rank)
-		element_damage *= _get_starter_element_damage_multiplier(powerup.element_type, equipped_powerups)
+		var starter_mult: float = _get_starter_element_damage_multiplier(powerup.element_type, equipped_powerups)
 
-		if not elements.has(powerup.element_type):
-			elements[powerup.element_type] = 0.0
+		if powerup.element_type != PowerUpData.ElementType.NONE:
+			var element_damage: float = base_damage * powerup.amount * float(rank) * starter_mult * wave_element_mult
+			if not elements.has(powerup.element_type):
+				elements[powerup.element_type] = 0.0
+			elements[powerup.element_type] += element_damage
+			packet.add_debug("[DMG] %s rank %d added %.1f elemental damage (wave_mult=%.2f)" %
+				[element_to_damage_type(powerup.element_type), rank, element_damage, wave_element_mult])
 
-		elements[powerup.element_type] += element_damage
-
-		packet.add_debug(
-			"[DMG] %s rank %d added %.1f elemental damage" %
-			[element_to_damage_type(powerup.element_type), rank, element_damage]
-		)
+		if powerup.element_type_b != PowerUpData.ElementType.NONE:
+			var element_damage_b: float = base_damage * powerup.amount * float(rank) * wave_element_mult
+			if not elements.has(powerup.element_type_b):
+				elements[powerup.element_type_b] = 0.0
+			elements[powerup.element_type_b] += element_damage_b
+			packet.add_debug("[DMG] %s (secondary) rank %d added %.1f elemental damage" %
+				[element_to_damage_type(powerup.element_type_b), rank, element_damage_b])
 
 	if elements.is_empty():
 		return packet
@@ -89,13 +101,12 @@ static func _get_unique_element_count(equipped_powerups: Array) -> int:
 		if powerup == null:
 			continue
 
-		if powerup.element_type == PowerUpData.ElementType.NONE:
-			continue
-
-		if unique_elements.has(powerup.element_type):
-			continue
-
-		unique_elements.append(powerup.element_type)
+		for et: int in [int(powerup.element_type), int(powerup.element_type_b)]:
+			if et == PowerUpData.ElementType.NONE:
+				continue
+			if unique_elements.has(et):
+				continue
+			unique_elements.append(et)
 
 	return unique_elements.size()
 
@@ -114,11 +125,11 @@ static func _add_combined_element_damage(packet: DamagePacket, elements: Diction
 		if combo == ComboLib.CombinedElement.NONE:
 			break
 
-		var combo_amount: float = float(elements[a]) + float(elements[b])
+		var combo_amount: float = (float(elements[a]) + float(elements[b])) * COMBO_BONUS_MULT
 		var combo_type: String = combo_to_damage_type(combo)
 
 		packet.add_damage(combo_amount, combo_type, "combo")
-		packet.add_debug("[DMG] combo %s=%.1f" % [combo_type, combo_amount])
+		packet.add_debug("[DMG] combo %s=%.1f (×%.1f bonus)" % [combo_type, combo_amount, COMBO_BONUS_MULT])
 
 		remaining.remove_at(1)
 		remaining.remove_at(0)

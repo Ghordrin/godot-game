@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://cplsm4e5f6g7h"]
+
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1_plsm"]
+
+[resource]
+script = ExtResource("1_plsm")
+id = "combo_plasma"
+display_name = "Plasma Coil"
+description = "Supercharges fire with electricity into plasma. Incinerates and stuns simultaneously."
+rarity = 3
+category = 1
+modifier_type = 1
+amount = 0.4
+element_type = 1
+element_type_b = 3
+min_wave = 7
+metadata/_custom_type_script = "uid://c6rwp657h3iie"

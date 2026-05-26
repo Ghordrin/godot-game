@@ -6,7 +6,7 @@
 radius = 4.0
 
 [node name="BossProjectile" type="Area2D" unique_id=676866104]
-collision_layer = 0
+collision_layer = 8
 script = ExtResource("1_proj")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=426828756]

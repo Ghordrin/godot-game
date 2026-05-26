@@ -33,6 +33,8 @@ func setup(new_direction: Vector2, new_damage: int = 15) -> void:
 		rotation = direction.angle()
 
 func _on_body_entered(body: Node2D) -> void:
+	if not body.is_in_group("player"):
+		return
 	var hc := body.get_node_or_null("HealthComponent") as Node
 	if hc and hc.has_method("take_damage"):
 		hc.take_damage(damage)

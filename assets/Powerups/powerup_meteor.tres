@@ -5,12 +5,12 @@
 [resource]
 script = ExtResource("1_a10u0")
 id = "meteor"
-display_name = "Meteor"
-description = "Upgrades boulder to meteor"
+display_name = "Junk Meteor"
+description = "Upgrades the Junk Slug into a blazing meteor strike."
 rarity = 2
 category = 5
 target_projectile_type = 2
-projectile_upgrade_type = 3
+projectile_upgrade_type = 1
 min_wave = 5
 requires_active_projectile = true
 metadata/_custom_type_script = "uid://c6rwp657h3iie"

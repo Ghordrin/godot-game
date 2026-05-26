@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://cem6b0jc6llrt" path="res://Data/Enemies/Boss/BossProjectile.tscn" id="2_3ioca"]
 [ext_resource type="Script" uid="uid://6dttfeskycuk" path="res://components/HealthComponent.gd" id="2_hcomp"]
 [ext_resource type="Texture2D" uid="uid://b8b56158q0a4a" path="res://assets/enemies/Tiled_files/Slime1_Idle_full.png" id="3_sprite"]
-[ext_resource type="PackedScene" uid="uid://m5gvnpyrt5qo" path="res://Data/UI/GoldPickUp.tscn" id="5_gold"]
+[ext_resource type="PackedScene" uid="uid://m5gvnpyrt5qo" path="res://Data/UI/ScrapPickUp.tscn" id="5_gold"]
 [ext_resource type="PackedScene" uid="uid://xduk3ix6qxt3" path="res://Data/World/Resources/PowerUp.tscn" id="6_powerup"]
 [ext_resource type="Script" uid="uid://dn6lad6evss5" path="res://components/StatusEffectComponent.gd" id="7_7u05g"]
 

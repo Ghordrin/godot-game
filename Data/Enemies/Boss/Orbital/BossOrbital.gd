@@ -14,7 +14,7 @@ class_name OrbitalCannonBoss
 
 @export var move_speed: float = 22.0
 @export var stop_distance: float = 220.0
-@export var boss_name: String = "Orbital Cannon"
+@export var boss_name: String = "The Dreadnought"
 
 # ══════════════════════════════════════════════════════════════════════
 # PHASE / ATTACK CADENCE

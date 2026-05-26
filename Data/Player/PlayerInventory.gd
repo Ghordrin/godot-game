@@ -515,16 +515,12 @@ func _add_element_if_valid(result: Array[int], powerup: PowerUpData) -> void:
 	if powerup == null:
 		return
 
-	if not "element_type" in powerup:
-		return
-
-	if powerup.element_type == PowerUpData.ElementType.NONE:
-		return
-
-	if result.has(powerup.element_type):
-		return
-
-	result.append(powerup.element_type)
+	for et: int in [int(powerup.element_type), int(powerup.element_type_b)]:
+		if et == PowerUpData.ElementType.NONE:
+			continue
+		if result.has(et):
+			continue
+		result.append(et)
 
 
 func _get_combo_for_elements(a: int, b: int) -> ElementalCombo:

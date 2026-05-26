@@ -10,5 +10,5 @@ description = "Projectiles apply ramping poison that grows stronger the longer i
 rarity = 1
 category = 1
 modifier_type = 1
-amount = 0.3
+amount = 0.5
 element_type = 4

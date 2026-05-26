@@ -7,18 +7,24 @@
 [ext_resource type="Resource" uid="uid://ba2u6l320s1dd" path="res://assets/Powerups/powerup_venom_injector.tres" id="6_skotp"]
 [ext_resource type="Resource" uid="uid://dxqnl5j238qvm" path="res://assets/Powerups/powerup_boulder_shot.tres" id="7_6wxod"]
 [ext_resource type="Resource" uid="uid://chqw67xgurb00" path="res://assets/Powerups/powerup_arc_conductor.tres" id="7_055ta"]
-[ext_resource type="Resource" uid="uid://dkls35m0gh5of" path="res://assets/Powerups/boulder_size.tres" id="7_jdpw0"]
 [ext_resource type="Resource" uid="uid://c85gt45v5h1g6" path="res://assets/Powerups/projectile_count.tres" id="8_6wxod"]
-[ext_resource type="Resource" uid="uid://cxh3a7bqwbvaq" path="res://assets/Powerups/boulder_impact.tres" id="8_fburt"]
 [ext_resource type="Resource" uid="uid://dvohtq0r7oqaf" path="res://assets/Powerups/powerup_nova_shot.tres" id="9_jdpw0"]
 [ext_resource type="Resource" uid="uid://b303pfo3nlrhn" path="res://assets/Powerups/powerup_cryo_lens.tres" id="10_anh6u"]
 [ext_resource type="Resource" uid="uid://b0cowe0863wh0" path="res://assets/Powerups/powerup_ignition_core.tres" id="11_jcwu3"]
 [ext_resource type="Resource" uid="uid://dydgw03ppmqeb" path="res://assets/Powerups/powerup_meteor.tres" id="12_jcwu3"]
 [ext_resource type="Resource" uid="uid://bo6i1b6ul4pd" path="res://assets/Powerups/powerup_homing_shot.tres" id="14_uqtb1"]
+[ext_resource type="Resource" uid="uid://bnpw7x3ka1mde" path="res://assets/Powerups/nova_pressure_wave.tres" id="15_npw0"]
+[ext_resource type="Resource" uid="uid://bhsw4y2rb0nce" path="res://assets/Powerups/homing_seeker_swarm.tres" id="16_hsw0"]
+[ext_resource type="Resource" uid="uid://cthml3a0b1c2d" path="res://assets/Powerups/combo_thermal.tres" id="17_thml"]
+[ext_resource type="Resource" uid="uid://cplsm4e5f6g7h" path="res://assets/Powerups/combo_plasma.tres" id="18_plsm"]
+[ext_resource type="Resource" uid="uid://ccrrs8jaj0k1l" path="res://assets/Powerups/combo_corrosive.tres" id="19_crrs"]
+[ext_resource type="Resource" uid="uid://cmgnt2m3n4o5p" path="res://assets/Powerups/combo_magnetic.tres" id="20_mgnt"]
+[ext_resource type="Resource" uid="uid://cvrl6q7r8tat0" path="res://assets/Powerups/combo_viral.tres" id="21_vrl"]
+[ext_resource type="Resource" uid="uid://cnrtx1u2v3w4x" path="res://assets/Powerups/combo_neurotoxin.tres" id="22_nrtx"]
 
 [resource]
 script = ExtResource("4_7fk72")
-common_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("10_anh6u"), ExtResource("11_jcwu3"), ExtResource("6_skotp"), ExtResource("7_055ta"), ExtResource("14_uqtb1"), ExtResource("7_jdpw0"), ExtResource("8_fburt"), ExtResource("12_jcwu3")])
-rare_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("3_1a6ub"), ExtResource("7_6wxod"), ExtResource("12_jcwu3")])
-epic_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("8_6wxod")])
-legendary_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("9_jdpw0"), ExtResource("6_055ta")])
+common_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("10_anh6u"), ExtResource("11_jcwu3"), ExtResource("6_skotp"), ExtResource("7_055ta"), ExtResource("14_uqtb1"), ExtResource("12_jcwu3")])
+rare_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("3_1a6ub"), ExtResource("7_6wxod")])
+epic_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("8_6wxod"), ExtResource("12_jcwu3"), ExtResource("15_npw0"), ExtResource("16_hsw0")])
+legendary_powerups = Array[ExtResource("1_jcwu3")]([ExtResource("9_jdpw0"), ExtResource("6_055ta"), ExtResource("17_thml"), ExtResource("18_plsm"), ExtResource("19_crrs"), ExtResource("20_mgnt"), ExtResource("21_vrl"), ExtResource("22_nrtx")])

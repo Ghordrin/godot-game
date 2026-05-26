@@ -7,7 +7,7 @@ class_name PhantomBoss
 
 @export var move_speed: float = 42.0
 @export var stop_distance: float = 115.0
-@export var boss_name: String = "The Phantom"
+@export var boss_name: String = "Wraith Unit"
 @export var phantom_tint: Color = Color(0.6, 0.3, 0.9, 1.0)
 
 # ══════════════════════════════════════════════════════════════════════

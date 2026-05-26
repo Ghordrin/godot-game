@@ -2,8 +2,6 @@
 class_name StatusEffectComponent
 extends Node
 
-const GroundDamageZoneScene := preload("res://Data/Damage/AreaEffects/GroundDamageZone.gd")
-
 signal effect_applied(type: EffectType)
 signal effect_expired(type: EffectType)
 
@@ -17,6 +15,7 @@ enum EffectType {
 	CRYSTALLIZED,
 	CONTAGION,
 	NEUROTOXIN,
+	PLASMA,
 }
 
 const TINT_STUN: Color = Color(1.3, 1.3, 0.5)
@@ -28,6 +27,7 @@ const TINT_VIRAL: Color = Color(0.7, 1.0, 0.55)
 const TINT_SLOW: Color = Color(0.4, 0.7, 1.4)
 const TINT_CRYSTALLIZED: Color = Color(0.5, 0.9, 1.5)
 const TINT_CONTAGION: Color = Color(0.6, 1.4, 0.5)
+const TINT_PLASMA: Color = Color(1.5, 0.8, 0.3)
 
 const BURN_DOT_MULT: float = 0.18
 const BURN_DURATION: float = 3.0
@@ -61,6 +61,17 @@ const NEUROTOXIN_REAPPLY_RAMP_BONUS: float = 2.0
 
 const VIRAL_DURATION: float = 5.0
 const VIRAL_DOT_BONUS: float = 0.75
+
+const PLASMA_ARC_RADIUS: float = 130.0
+const PLASMA_MAX_ARCS: int = 2
+const PLASMA_DURATION: float = 3.5
+const PLASMA_TICK_RATE: float = 0.6
+const PLASMA_DAMAGE_MULT: float = 0.15
+
+const THERMAL_EXECUTE_MIN_MULT: float = 0.25
+const THERMAL_EXECUTE_MAX_MULT: float = 1.0
+const THERMAL_SPLASH_RADIUS: float = 80.0
+const THERMAL_SPLASH_RATIO: float = 0.40
 
 const SPEED_PROPERTIES: Array[String] = [
 	"move_speed",
@@ -181,6 +192,8 @@ func _process(delta: float) -> void:
 	var slow_state_needs_recalc: bool = false
 
 	for i: int in range(active_effects.size() - 1, -1, -1):
+		if i >= active_effects.size():
+			continue
 		var fx: Dictionary = active_effects[i]
 
 		fx["elapsed"] = float(fx["elapsed"]) + delta
@@ -241,7 +254,7 @@ func apply_combo_effect(combo_type, element_pool: float = 0.0) -> void:
 
 	match combo_name:
 		"plasma":
-			_apply_plasma_combo(element_pool)
+			apply_plasma(maxf(1.0, element_pool * PLASMA_DAMAGE_MULT))
 
 		"corrosive":
 			apply_poison(maxf(1.0, element_pool * 0.18), POISON_DURATION, POISON_TICK_RATE)
@@ -258,7 +271,7 @@ func apply_combo_effect(combo_type, element_pool: float = 0.0) -> void:
 			apply_neurotoxin_from_combo(element_pool)
 
 		"thermal":
-			pass
+			_apply_thermal_combo(element_pool)
 
 		_:
 			pass
@@ -332,6 +345,14 @@ func apply_viral(duration: float = VIRAL_DURATION, dot_bonus: float = VIRAL_DOT_
 	})
 
 
+func apply_plasma(damage_per_arc: float) -> void:
+	_apply(EffectType.PLASMA, {
+		"damage": damage_per_arc,
+		"duration": PLASMA_DURATION,
+		"tick_rate": PLASMA_TICK_RATE,
+	})
+
+
 func apply_crystallize(shatter_damage: float, duration: float = 3.0) -> void:
 	_remove_effect_type(EffectType.SLOW)
 	_remove_effect_type(EffectType.POISON)
@@ -397,9 +418,7 @@ func clear_all() -> void:
 
 
 func on_enemy_death() -> void:
-	if PlayerInventory.active_combinations.has(PlayerInventory.ElementalCombo.THERMAL):
-		if has_effect(EffectType.BURN) and has_effect(EffectType.SLOW):
-			_trigger_thermal_shock_explosion()
+	pass
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -433,25 +452,95 @@ func _normalize_combo_name(combo_type) -> String:
 			return ""
 
 
-func _apply_plasma_combo(element_pool: float) -> void:
+func _apply_thermal_combo(element_pool: float) -> void:
 	if not is_instance_valid(_health_comp):
 		return
 
-	var plasma_damage: float = maxf(1.0, element_pool * 0.30)
+	var current_hp: float = float(_health_comp.current_health)
+	var max_hp: float = float(_health_comp.max_health)
+	var hp_ratio: float = clampf(current_hp / maxf(max_hp, 1.0), 0.0, 1.0)
+	var multiplier: float = THERMAL_EXECUTE_MIN_MULT + (1.0 - hp_ratio) * (THERMAL_EXECUTE_MAX_MULT - THERMAL_EXECUTE_MIN_MULT)
 
-	_health_comp.take_damage(plasma_damage, "combo")
+	var burst_damage: float = maxf(1.0, element_pool * multiplier)
 
-	if _parent != null and _parent.is_inside_tree():
-		DamageNumberSpawner.spawn(
-			DamageNumberSpawner.get_anchor_position(_parent),
-			plasma_damage,
-			DamageVisuals.get_display_name("combo"),
-			DamageVisuals.get_color("combo"),
-			4,
-			true
-		)
+	_deal_damage(burst_damage, "fire", {})
 
-	DamageMeter.record(plasma_damage, "combo")
+	if _parent == null or not _parent.is_inside_tree():
+		return
+
+	var splash := maxf(1.0, burst_damage * THERMAL_SPLASH_RATIO)
+	var packet := DamagePacket.new()
+	packet.add_damage(splash, "fire", "thermal_splash")
+
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if enemy == _parent or not enemy is Node2D:
+			continue
+
+		var enemy_2d := enemy as Node2D
+
+		if _parent.global_position.distance_to(enemy_2d.global_position) > THERMAL_SPLASH_RADIUS:
+			continue
+
+		var health := enemy_2d.get_node_or_null("HealthComponent") as HealthComponent
+
+		if health != null:
+			health.take_damage_packet(packet)
+
+
+func _arc_plasma_to_nearby(damage_per_arc: float) -> void:
+	if _parent == null or not _parent.is_inside_tree():
+		return
+
+	var candidates: Array[Node2D] = []
+
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if enemy == _parent or not enemy is Node2D:
+			continue
+
+		var enemy_2d := enemy as Node2D
+
+		if _parent.global_position.distance_to(enemy_2d.global_position) <= PLASMA_ARC_RADIUS:
+			candidates.append(enemy_2d)
+
+	candidates.sort_custom(func(a: Node2D, b: Node2D) -> bool:
+		return _parent.global_position.distance_to(a.global_position) < _parent.global_position.distance_to(b.global_position)
+	)
+
+	var arcs := 0
+
+	for enemy_2d in candidates:
+		if arcs >= PLASMA_MAX_ARCS:
+			break
+
+		var health := enemy_2d.get_node_or_null("HealthComponent") as HealthComponent
+
+		if health == null:
+			continue
+
+		var packet := DamagePacket.new()
+		packet.add_damage(maxf(1.0, damage_per_arc), "lightning", "plasma_arc")
+		health.take_damage_packet(packet)
+
+		_draw_plasma_arc(_parent.global_position, enemy_2d.global_position)
+		arcs += 1
+
+
+func _draw_plasma_arc(from: Vector2, to: Vector2) -> void:
+	if not is_inside_tree():
+		return
+
+	var line := Line2D.new()
+	line.add_point(from)
+	line.add_point(to)
+	line.width = 2.5
+	line.default_color = Color(1.5, 0.9, 0.3, 0.9)
+	line.z_index = 10
+	get_tree().current_scene.add_child(line)
+
+	var tween := line.create_tween()
+	tween.tween_property(line, "modulate:a", 0.0, 0.3)
+	tween.tween_callback(line.queue_free)
+
 
 
 func _apply(type: EffectType, data: Dictionary) -> void:
@@ -574,6 +663,9 @@ func _on_tick(fx: Dictionary) -> void:
 				1.0 + neuro_elapsed * NEUROTOXIN_DAMAGE_RAMP_PER_SECOND
 			)
 			_deal_damage(_get_dot_damage(fx) * ramp, "neurotoxin", fx)
+
+		EffectType.PLASMA:
+			_arc_plasma_to_nearby(float(fx["damage"]))
 
 
 func _get_dot_damage(fx: Dictionary) -> float:
@@ -795,6 +887,8 @@ func _update_tint() -> void:
 				target_color = TINT_CRYSTALLIZED
 			EffectType.CONTAGION:
 				target_color = TINT_CONTAGION
+			EffectType.PLASMA:
+				target_color = TINT_PLASMA
 
 	_sprite.modulate = target_color
 
@@ -889,18 +983,3 @@ func _trigger_crystallize_shatter(amount: float) -> void:
 
 		if health != null:
 			health.take_damage_packet(packet)
-
-
-func _trigger_thermal_shock_explosion() -> void:
-	if _parent == null:
-		return
-
-	var zone := GroundDamageZoneScene.new()
-	zone.global_position = _parent.global_position
-	zone.radius = 90.0
-	zone.damage_per_tick = 4.0
-	zone.tick_interval = 0.25
-	zone.duration = 0.8
-	zone.damage_type = "fire"
-	zone.add_to_group("wave_cleanup")
-	get_tree().current_scene.add_child(zone)

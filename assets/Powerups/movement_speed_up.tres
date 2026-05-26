@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_qj6g5")
 id = "move_speed_up"
-display_name = "Movement Speed"
-description = "Increases movement speed"
+display_name = "Boosted Servos"
+description = "Salvaged locomotion upgrades. Increases movement speed."
 rarity = 2
 max_stacks = 3
 stat_to_modify = "move_speed"

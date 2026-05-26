@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://cnrtx1u2v3w4x"]
+
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1_nrtx"]
+
+[resource]
+script = ExtResource("1_nrtx")
+id = "combo_neurotoxin"
+display_name = "Neurotoxin Amp"
+description = "Fuses lightning and poison into a neurotoxin. Shocks the nervous system and poisons the blood."
+rarity = 3
+category = 1
+modifier_type = 1
+amount = 0.4
+element_type = 3
+element_type_b = 4
+min_wave = 7
+metadata/_custom_type_script = "uid://c6rwp657h3iie"

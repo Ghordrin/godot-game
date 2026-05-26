@@ -16,16 +16,18 @@ class_name PowerUpTable
 # ══════════════════════════════════════════════════════════════════════
 
 func roll_drop() -> PowerUpData:
-	var available_rarities: Array[int] = []
+	var slots_full: bool = PlayerInventory.get_equipped_projectile_count() >= 2
 
-	if not common_powerups.is_empty() and weight_common > 0:
-		available_rarities.append(PowerUpData.Rarity.COMMON)
-	if not rare_powerups.is_empty() and weight_rare > 0:
-		available_rarities.append(PowerUpData.Rarity.RARE)
-	if not epic_powerups.is_empty() and weight_epic > 0:
-		available_rarities.append(PowerUpData.Rarity.EPIC)
-	if not legendary_powerups.is_empty() and weight_legendary > 0:
-		available_rarities.append(PowerUpData.Rarity.LEGENDARY)
+	var f_common     := _filter_pool(common_powerups,     slots_full)
+	var f_rare       := _filter_pool(rare_powerups,       slots_full)
+	var f_epic       := _filter_pool(epic_powerups,       slots_full)
+	var f_legendary  := _filter_pool(legendary_powerups,  slots_full)
+
+	var available_rarities: Array[int] = []
+	if not f_common.is_empty()    and weight_common    > 0: available_rarities.append(PowerUpData.Rarity.COMMON)
+	if not f_rare.is_empty()      and weight_rare      > 0: available_rarities.append(PowerUpData.Rarity.RARE)
+	if not f_epic.is_empty()      and weight_epic      > 0: available_rarities.append(PowerUpData.Rarity.EPIC)
+	if not f_legendary.is_empty() and weight_legendary > 0: available_rarities.append(PowerUpData.Rarity.LEGENDARY)
 
 	if available_rarities.is_empty():
 		return null
@@ -33,14 +35,10 @@ func roll_drop() -> PowerUpData:
 	var rarity := _roll_available_rarity(available_rarities)
 
 	match rarity:
-		PowerUpData.Rarity.COMMON:
-			return common_powerups.pick_random()
-		PowerUpData.Rarity.RARE:
-			return rare_powerups.pick_random()
-		PowerUpData.Rarity.EPIC:
-			return epic_powerups.pick_random()
-		PowerUpData.Rarity.LEGENDARY:
-			return legendary_powerups.pick_random()
+		PowerUpData.Rarity.COMMON:    return f_common.pick_random()
+		PowerUpData.Rarity.RARE:      return f_rare.pick_random()
+		PowerUpData.Rarity.EPIC:      return f_epic.pick_random()
+		PowerUpData.Rarity.LEGENDARY: return f_legendary.pick_random()
 
 	return null
 
@@ -156,7 +154,22 @@ func _can_offer_powerup(powerup: PowerUpData, projectile_slots_full: bool) -> bo
 	if projectile_slots_full and powerup.is_projectile_powerup():
 		return false
 
+	if powerup.min_wave > 0 and PlayerInventory.current_wave < powerup.min_wave:
+		return false
+
+	if powerup.requires_active_projectile:
+		if not PlayerInventory.has_active_projectile_type(powerup.target_projectile_type):
+			return false
+
 	return true
+
+
+func _filter_pool(pool: Array[PowerUpData], projectile_slots_full: bool) -> Array[PowerUpData]:
+	var result: Array[PowerUpData] = []
+	for powerup in pool:
+		if _can_offer_powerup(powerup, projectile_slots_full):
+			result.append(powerup)
+	return result
 
 
 func _offer_contains_id(offer: Array[PowerUpData], id: String) -> bool:

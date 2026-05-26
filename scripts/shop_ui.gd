@@ -139,7 +139,7 @@ func _build_build_section(parent: Control) -> void:
 	margin.add_child(vbox)
 
 	var label := Label.new()
-	label.text = "CURRENT BUILD"
+	label.text = "CURRENT RIG"
 	label.add_theme_font_size_override("font_size", 11)
 	label.add_theme_color_override("font_color", COLOR_MUTED)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -160,7 +160,7 @@ func _build_title(parent: Control) -> void:
 	parent.add_child(margin)
 
 	title_label = Label.new()
-	title_label.text = "CHOOSE YOUR UPGRADE"
+	title_label.text = "SALVAGE A RELIC"
 	title_label.add_theme_font_size_override("font_size", 18)
 	title_label.add_theme_color_override("font_color", COLOR_TITLE)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -394,8 +394,8 @@ func _update_display() -> void:
 			title_label.text = "CHOOSE YOUR FIRST PROJECTILE"
 
 		_:
-			wave_label.text = "WAVE %d" % current_wave
-			title_label.text = "CHOOSE YOUR UPGRADE"
+			wave_label.text = "SWEEP %d" % current_wave
+			title_label.text = "SALVAGE A RELIC"
 
 	_update_gold_display()
 	_update_current_build_display()
@@ -550,7 +550,7 @@ func _update_reroll_button() -> void:
 	var cost := _get_reroll_cost()
 	var can_afford: bool = PlayerInventory.gold >= cost
 
-	reroll_btn.text = "↺ REROLL  %d" % cost
+	reroll_btn.text = "↺ SCAVENGE  %d" % cost
 	reroll_btn.disabled = not can_afford or selection_confirmed
 	reroll_btn.add_theme_color_override(
 		"font_color",
@@ -605,7 +605,7 @@ func _update_continue_button() -> void:
 
 func _update_gold_display(_val: int = 0) -> void:
 	if gold_label != null:
-		gold_label.text = "%d GOLD" % PlayerInventory.gold
+		gold_label.text = "%d SCRAP" % PlayerInventory.gold
 
 
 func _update_current_build_display() -> void:

@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_PowerUpData")
 id = "nova_shot"
-display_name = "Nova Shot"
-description = "Projectiles explode on impact dealing area damage. Each rank increases explosion radius and damage."
+display_name = "Shrapnel Burst"
+description = "Projectiles detonate on impact, scattering debris for area damage. Each rank increases explosion radius and damage."
 rarity = 2
 category = 2
 max_stacks = 1

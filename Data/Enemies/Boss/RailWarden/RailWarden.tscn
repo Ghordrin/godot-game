@@ -28,6 +28,8 @@ height = 177.9908
 radius = 3.4240716
 
 [node name="RailWarden" type="CharacterBody2D" unique_id=63450376]
+light_mask = 2
+visibility_layer = 5
 script = ExtResource("1_nfnfi")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=37264088]

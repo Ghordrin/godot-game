@@ -27,7 +27,7 @@ enum ElementType {
 	FIRE,
 	ICE,
 	LIGHTNING,
-	POISON
+	POISON,
 }
 
 ## How the powerup's amount is applied to stats
@@ -49,26 +49,12 @@ enum ProjectileType {
 ## Projectile-specific upgrade behavior.
 enum ProjectileUpgradeType {
 	NONE,
-
-	# Boulder
-	BOULDER_SIZE,
-	BOULDER_IMPACT,
-	BOULDER_METEOR,
-
-	# Homing
-	HOMING_EXTRA_PROJECTILES,
-	HOMING_SPEED,
-	HOMING_TURN_RATE,
-
-	# Nova
-	NOVA_RADIUS,
-	NOVA_PATCH_COUNT,
-	NOVA_DAMAGE,
-
-	# Phase
+	BOULDER_METEOR,      ## Drop-from-sky evolution: dramatically increases damage and AoE.
+	NOVA_PRESSURE_WAVE,  ## Detonation leaves a persistent damage zone.
+	HOMING_SEEKER_SWARM, ## On kill, spawns mini-seekers toward nearby enemies.
 	PHASE_PIERCE,
 	PHASE_SPEED,
-	PHASE_WIDTH
+	PHASE_WIDTH,
 }
 
 # ══════════════════════════════════════════════════════════════════════
@@ -102,6 +88,8 @@ enum ProjectileUpgradeType {
 # ══════════════════════════════════════════════════════════════════════
 
 @export var element_type: ElementType = ElementType.NONE
+## Second element for combo powerups (e.g. a Thermal powerup grants Fire + Ice at once).
+@export var element_type_b: ElementType = ElementType.NONE
 
 # ══════════════════════════════════════════════════════════════════════
 # PROJECTILE TYPE SYSTEM

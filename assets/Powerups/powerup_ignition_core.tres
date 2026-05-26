@@ -10,6 +10,6 @@ description = "Projectiles leave burning ground. Combines with other elements fo
 rarity = 1
 category = 1
 modifier_type = 1
-amount = 0.3
+amount = 0.5
 element_type = 1
 metadata/_custom_type_script = "uid://c6rwp657h3iie"

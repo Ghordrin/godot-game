@@ -11,9 +11,13 @@ signal died
 var current_health: int
 var is_dead: bool = false
 var is_invincible: bool = false
+# Never modified after _ready — used as the ground-truth base for scale_max_health
+# so pooled enemies don't compound health multipliers across reuses.
+var base_max_health: int = 0
 
 
 func _ready() -> void:
+	base_max_health = max_health
 	current_health = max_health
 	health_changed.emit(current_health, max_health)
 
@@ -112,7 +116,8 @@ func set_max_health(new_max_health: int, refill_health: bool = true) -> void:
 
 
 func scale_max_health(multiplier: float, refill_health: bool = true) -> void:
-	var scaled_health: int = max(1, int(round(float(max_health) * multiplier)))
+	var base: int = base_max_health if base_max_health > 0 else max_health
+	var scaled_health: int = max(1, int(round(float(base) * multiplier)))
 	set_max_health(scaled_health, refill_health)
 
 

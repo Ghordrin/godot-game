@@ -7,7 +7,7 @@ class_name BossEnemy
 
 @export var move_speed: float = 58.0
 @export var stop_distance: float = 44.0
-@export var boss_name: String = "The Brute"
+@export var boss_name: String = "The Crusher"
 
 # ══════════════════════════════════════════════════════════════════════
 # GENERAL ATTACK CONFIG

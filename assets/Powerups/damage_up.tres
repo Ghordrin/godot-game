@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_e7vyu")
 id = "damage_up"
-display_name = "Damage"
-description = "Increases the damage"
+display_name = "Scrap Rounds"
+description = "Salvaged ammunition. Increases damage output."
 stat_to_modify = "damage"
 amount = 5.0
 metadata/_custom_type_script = "uid://c6rwp657h3iie"

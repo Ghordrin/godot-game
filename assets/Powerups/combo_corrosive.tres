@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://ccrrs8jaj0k1l"]
+
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1_crrs"]
+
+[resource]
+script = ExtResource("1_crrs")
+id = "combo_corrosive"
+display_name = "Corrosive Vial"
+description = "Merges fire and poison into acid. Melts armor and spreads burning rot."
+rarity = 3
+category = 1
+modifier_type = 1
+amount = 0.4
+element_type = 1
+element_type_b = 4
+min_wave = 7
+metadata/_custom_type_script = "uid://c6rwp657h3iie"

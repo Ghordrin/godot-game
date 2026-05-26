@@ -3,8 +3,8 @@ extends Node
 ## This does not store enemy nodes or captured lambdas.
 ## It prepares death payloads over multiple frames and forwards gold to GoldDropManager.
 
-@export var max_payloads_per_frame: int = 2
-@export var max_loot_spawns_per_frame: int = 3
+@export var max_payloads_per_frame: int = 25
+@export var max_loot_spawns_per_frame: int = 10
 
 var _payloads: Array[Dictionary] = []
 var _loot_payloads: Array[Dictionary] = []

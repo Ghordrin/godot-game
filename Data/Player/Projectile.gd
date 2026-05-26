@@ -164,12 +164,12 @@ func apply_secondary_type(type: int, rank: int = 1) -> void:
 			bounces_remaining = 2 + rank
 
 		PowerUpData.ProjectileType.NOVA:
-			nova_radius = maxf(nova_radius, 115.0 + float(rank) * 8.0)
-			nova_damage_ratio = maxf(nova_damage_ratio, 0.65 + float(rank) * 0.03)
+			nova_radius = maxf(nova_radius, 115.0 + float(rank) * 25.0)
+			nova_damage_ratio = maxf(nova_damage_ratio, 0.65 + float(rank) * 0.10)
 
 		PowerUpData.ProjectileType.HOMING:
-			homing_strength = maxf(homing_strength, 5.0 + float(rank) * 0.6)
-			homing_range = maxf(homing_range, 780.0 + float(rank) * 30.0)
+			homing_strength = maxf(homing_strength, 5.0 + float(rank) * 2.0)
+			homing_range = maxf(homing_range, 780.0 + float(rank) * 60.0)
 
 		_:
 			pass
@@ -209,34 +209,20 @@ func _apply_phase(rank: int) -> void:
 
 
 func _apply_boulder(rank: int) -> void:
-	var size_rank: int = PlayerInventory.get_projectile_upgrade_rank(
-		PowerUpData.ProjectileUpgradeType.BOULDER_SIZE,
-		PowerUpData.ProjectileType.BOULDER
-	)
-	var impact_rank: int = PlayerInventory.get_projectile_upgrade_rank(
-		PowerUpData.ProjectileUpgradeType.BOULDER_IMPACT,
-		PowerUpData.ProjectileType.BOULDER
-	)
 	var meteor_rank: int = PlayerInventory.get_projectile_upgrade_rank(
 		PowerUpData.ProjectileUpgradeType.BOULDER_METEOR,
 		PowerUpData.ProjectileType.BOULDER
 	)
 
-	var size_mult: float = 1.15
-	size_mult += float(rank - 1) * 0.08
-	size_mult += float(size_rank) * 0.16
+	# Each base rank meaningfully grows size and collision.
+	# Meteor adds a smaller size bonus on top.
+	var size_mult: float = 1.0 + float(rank - 1) * 0.20 + float(meteor_rank) * 0.08
 
-	# Meteor should not replace BOULDER_SIZE.
-	# It gets only a small size contribution.
-	size_mult += float(meteor_rank) * 0.06
-
-	# Meteor is the Boulder damage evolution.
-	# Use a stable base value, but never below current projectile damage,
-	# so normal damage buffs still affect Meteor.
-	var meteor_base_damage: float = maxf(base_damage, float(damage))
-	var damage_mult: float = 1.10 + pow(float(meteor_rank), 1.25) * 0.32
-
-	damage = int(round(meteor_base_damage * damage_mult))
+	# Base rank provides a modest damage scaling; Meteor multiplies on top.
+	var base: float = maxf(base_damage, float(damage))
+	var rank_mult: float  = 1.0 + float(rank - 1) * 0.18
+	var meteor_mult: float = 1.0 + pow(float(meteor_rank), 1.35) * 0.45
+	damage = int(round(base * rank_mult * meteor_mult))
 
 	speed = _base_speed * 0.55
 	lifetime = maxf(_base_lifetime, 6.0)
@@ -245,59 +231,41 @@ func _apply_boulder(rank: int) -> void:
 
 	set_meta("boulder_enabled", true)
 	set_meta("boulder_rank", rank)
-	set_meta("boulder_size_rank", size_rank)
-	set_meta("boulder_impact_rank", impact_rank)
 	set_meta("boulder_meteor_rank", meteor_rank)
 	set_meta("boulder_size_mult", size_mult)
-	set_meta("boulder_damage_mult", damage_mult)
-	set_meta("boulder_base_damage_used", meteor_base_damage)
 
 	_apply_visual_and_collision_scale(Vector2(size_mult, size_mult))
 
 
 func _apply_nova(rank: int) -> void:
-	var radius_rank: int = PlayerInventory.get_projectile_upgrade_rank(
-		PowerUpData.ProjectileUpgradeType.NOVA_RADIUS,
-		PowerUpData.ProjectileType.NOVA
-	)
-	var patch_rank: int = PlayerInventory.get_projectile_upgrade_rank(
-		PowerUpData.ProjectileUpgradeType.NOVA_PATCH_COUNT,
-		PowerUpData.ProjectileType.NOVA
-	)
-	var damage_rank: int = PlayerInventory.get_projectile_upgrade_rank(
-		PowerUpData.ProjectileUpgradeType.NOVA_DAMAGE,
+	var wave_rank: int = PlayerInventory.get_projectile_upgrade_rank(
+		PowerUpData.ProjectileUpgradeType.NOVA_PRESSURE_WAVE,
 		PowerUpData.ProjectileType.NOVA
 	)
 
-	nova_radius = 115.0 + float(rank - 1) * 8.0 + float(radius_rank) * 16.0
-	nova_damage_ratio = 0.65 + float(damage_rank) * 0.08
+	# Each rank meaningfully grows blast radius and damage ratio.
+	nova_radius = 115.0 + float(rank - 1) * 25.0
+	nova_damage_ratio = 0.65 + float(rank - 1) * 0.10
 
-	set_meta("nova_patch_bonus", patch_rank)
 	set_meta("nova_rank", rank)
+	set_meta("nova_pressure_wave_rank", wave_rank)
 
 	pierces_enemies = false
 
 
 func _apply_homing(rank: int) -> void:
-	var extra_rank: int = PlayerInventory.get_projectile_upgrade_rank(
-		PowerUpData.ProjectileUpgradeType.HOMING_EXTRA_PROJECTILES,
-		PowerUpData.ProjectileType.HOMING
-	)
-	var speed_rank: int = PlayerInventory.get_projectile_upgrade_rank(
-		PowerUpData.ProjectileUpgradeType.HOMING_SPEED,
-		PowerUpData.ProjectileType.HOMING
-	)
-	var turn_rank: int = PlayerInventory.get_projectile_upgrade_rank(
-		PowerUpData.ProjectileUpgradeType.HOMING_TURN_RATE,
+	var swarm_rank: int = PlayerInventory.get_projectile_upgrade_rank(
+		PowerUpData.ProjectileUpgradeType.HOMING_SEEKER_SWARM,
 		PowerUpData.ProjectileType.HOMING
 	)
 
-	homing_strength = 5.0 + float(rank - 1) * 0.4 + float(turn_rank) * 0.8
-	homing_range = 780.0 + float(turn_rank) * 35.0
-	lifetime = 6.0 + float(extra_rank) * 0.25
-	speed = _base_speed * (0.95 + float(speed_rank) * 0.08)
+	# Each rank grows tracking strength, range, speed, and lifetime.
+	homing_strength = 5.0 + float(rank - 1) * 2.0
+	homing_range = 780.0 + float(rank - 1) * 60.0
+	lifetime = 5.0 + float(rank - 1) * 0.8
+	speed = _base_speed * (1.0 + float(rank - 1) * 0.08)
 
-	set_meta("homing_extra_projectiles", extra_rank)
+	set_meta("homing_seeker_swarm_rank", swarm_rank)
 
 
 func play_projectile_animation() -> void:
@@ -473,6 +441,18 @@ func _check_ricochet(delta: float) -> void:
 
 
 func _find_best_homing_target() -> Node2D:
+	# Seeker swarm children have a forced target assigned at spawn.
+	# Follow it until it dies, then fall through to normal scoring.
+	if has_meta("seeker_target_id"):
+		var tid: int = int(get_meta("seeker_target_id"))
+		if is_instance_id_valid(tid):
+			var forced := instance_from_id(tid)
+			if is_instance_valid(forced) and forced is Node2D:
+				var hc := (forced as Node).get_node_or_null("HealthComponent")
+				if hc == null or not bool(hc.get("is_dead")):
+					return forced as Node2D
+		remove_meta("seeker_target_id")
+
 	var best_target: Node2D = null
 	var best_score: float = INF
 

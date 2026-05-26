@@ -3,6 +3,8 @@ extends CharacterBody2D
 @export var move_speed: float = 75.0
 @export var stop_distance: float = 28.0
 @export var attack_distance: float = 22.0
+@export var separation_radius: float = 36.0
+@export var separation_weight: float = 1.5
 
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var health_component: HealthComponent = $HealthComponent
@@ -25,11 +27,16 @@ var is_wave_temporary_drop: bool = true
 var _is_dying: bool = false
 var _is_pooled: bool = false
 var _base_move_speed: float = 75.0
+var _enemy_manager: Node = null
+var _separation_frame_offset: int = 0
+var _cached_separation: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
 	add_to_group("enemies")
 	_base_move_speed = move_speed
+	_enemy_manager = get_node_or_null("/root/EnemyManager")
+	_separation_frame_offset = get_instance_id() % 3
 
 	if health_component != null and not health_component.died.is_connected(_on_died):
 		health_component.died.connect(_on_died)
@@ -53,6 +60,9 @@ func _physics_process(_delta: float) -> void:
 		velocity = Vector2.ZERO
 		play_idle_animation()
 
+	if Engine.get_physics_frames() % 3 == _separation_frame_offset:
+		_cached_separation = _separation_force()
+	velocity += _cached_separation
 	move_and_slide()
 
 
@@ -86,6 +96,7 @@ func revive_from_pool(spawn_position: Vector2) -> void:
 	velocity = Vector2.ZERO
 	last_direction = Vector2.DOWN
 	target = null
+	_cached_separation = Vector2.ZERO
 
 	show()
 	set_process(true)
@@ -146,6 +157,27 @@ func _acquire_target() -> void:
 		target = players[0] as Node2D
 
 
+func _separation_force() -> Vector2:
+	var force := Vector2.ZERO
+	var radius_sq := separation_radius * separation_radius
+	var neighbors: Array = _enemy_manager.get_nearby_enemies(global_position, separation_radius) if _enemy_manager != null else get_tree().get_nodes_in_group("enemies")
+
+	for neighbor in neighbors:
+		if neighbor == self or not is_instance_valid(neighbor):
+			continue
+
+		var offset := global_position - (neighbor as Node2D).global_position
+		var dist_sq := offset.length_squared()
+
+		if dist_sq >= radius_sq or dist_sq <= 0.0:
+			continue
+
+		var dist := sqrt(dist_sq)
+		force += (offset / dist) * (1.0 - dist / separation_radius)
+
+	return force * separation_weight * move_speed
+
+
 func follow_target() -> void:
 	if not is_instance_valid(target):
 		return
@@ -204,6 +236,7 @@ func _on_died() -> void:
 	else:
 		_spawn_gold_from_payload(payload)
 		_spawn_loot_from_payload(payload)
+	
 
 	## For pooled swarm enemies, hide immediately.
 	## A pooled death effect can be added later.
@@ -299,23 +332,28 @@ func play_walk_animation(direction: Vector2) -> void:
 	if animated_sprite == null or animated_sprite.sprite_frames == null:
 		return
 
-	if abs(direction.x) > abs(direction.y):
-		if direction.x > 0.0:
-			AnimationHelper.play_if_exists(animated_sprite, "walk_right")
-		else:
-			AnimationHelper.play_if_exists(animated_sprite, "walk_left")
+	var anim: String
+	if abs(direction.x) >= abs(direction.y):
+		anim = "walk_right" if direction.x >= 0.0 else "walk_left"
 	else:
-		if direction.y > 0.0:
-			AnimationHelper.play_if_exists(animated_sprite, "walk_down")
-		else:
-			AnimationHelper.play_if_exists(animated_sprite, "walk_up")
+		anim = "walk_down" if direction.y >= 0.0 else "walk_up"
+
+	_play_anim(anim)
 
 
 func play_idle_animation() -> void:
 	if animated_sprite == null:
 		return
 
-	AnimationHelper.play_if_exists(animated_sprite, "idle")
+	_play_anim("idle")
+
+
+func _play_anim(anim: String) -> void:
+	if animated_sprite == null:
+		return
+	if animated_sprite.animation == anim and animated_sprite.is_playing():
+		return
+	AnimationHelper.play_if_exists(animated_sprite, anim)
 
 
 func play_death_animation() -> void:
@@ -325,5 +363,6 @@ func play_death_animation() -> void:
 
 	if animated_sprite.sprite_frames != null and animated_sprite.sprite_frames.has_animation("death"):
 		animated_sprite.play("death")
+		print("playing death anime")
 	else:
 		hide()

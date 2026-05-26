@@ -51,13 +51,13 @@ func _build_ui() -> void:
 	info_margin.add_child(info_vbox)
 
 	wave_label = Label.new()
-	wave_label.text = "WAVE 1"
+	wave_label.text = "SWEEP 1"
 	wave_label.add_theme_font_size_override("font_size", 20)
 	wave_label.add_theme_color_override("font_color", COLOR_TITLE)
 	info_vbox.add_child(wave_label)
 
 	gold_label = Label.new()
-	gold_label.text = "Gold: 0"
+	gold_label.text = "Scrap: 0"
 	gold_label.add_theme_font_size_override("font_size", 14)
 	gold_label.add_theme_color_override("font_color", COLOR_GOLD)
 	info_vbox.add_child(gold_label)
@@ -167,7 +167,7 @@ func _build_damage_meter() -> void:
 	mm.add_child(mvbox)
 
 	var meter_title := Label.new()
-	meter_title.text = "WAVE DAMAGE"
+	meter_title.text = "SWEEP DAMAGE"
 	meter_title.add_theme_font_size_override("font_size", 10)
 	meter_title.add_theme_color_override("font_color", COLOR_MUTED)
 	mvbox.add_child(meter_title)
@@ -222,7 +222,7 @@ func _connect_signals() -> void:
 # ══════════════════════════════════════════════════════════════════════
 
 func _on_wave_started(wave_number: int) -> void:
-	wave_label.text = "WAVE %d" % wave_number
+	wave_label.text = "SWEEP %d" % wave_number
 	# Reset bar for new wave
 	_wave_total  = 0
 	_wave_killed = 0
@@ -254,7 +254,7 @@ func _on_enemy_count_changed(alive: int, total: int) -> void:
 
 func _on_gold_changed(new_gold: int) -> void:
 	if gold_label:
-		gold_label.text = "Gold: %d" % new_gold
+		gold_label.text = "Scrap: %d" % new_gold
 
 
 func _on_shop_visibility_changed() -> void:

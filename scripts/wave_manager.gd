@@ -90,7 +90,7 @@ var _enemy_safety_timer: float = 0.0
 
 @export var base_enemy_count: int = 3
 @export var enemies_per_wave: float = 2.5
-@export var max_enemy_count_per_segment: int = 120
+@export var max_enemy_count_per_segment: int = 1000
 
 @export var health_scale: float = 0.045
 @export var damage_scale: float = 0.055
@@ -935,12 +935,7 @@ func _force_enemy_visible(enemy: Node2D) -> void:
 				changed = true
 
 	if changed and enemy_safety_debug:
-		push_warning(
-			"WaveManager: Forced invisible enemy visible: "
-			+ str(enemy.name)
-			+ " at "
-			+ str(enemy.global_position)
-		)
+		pass
 
 
 func _check_enemy_distance(enemy: Node2D, player: Node2D) -> void:

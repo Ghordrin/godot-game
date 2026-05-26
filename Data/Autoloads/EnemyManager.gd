@@ -7,10 +7,12 @@ extends Node
 ## Normal enemies are recycled instead of queue_free().
 
 @export var enable_pooling: bool = true
-@export var max_pool_size_per_scene: int = 300
+@export var max_pool_size_per_scene: int = 1500
+@export var spatial_grid_cell_size: float = 40.0
 
 var _active_enemies: Array[Node] = []
 var _pool_by_scene: Dictionary = {}
+var _spatial_grid: Dictionary = {}
 
 
 func spawn_enemy(
@@ -221,3 +223,36 @@ func _default_enable_enemy(enemy: Node) -> void:
 	if hurtbox != null:
 		hurtbox.set_deferred("monitoring", true)
 		hurtbox.set_deferred("monitorable", true)
+
+
+func _physics_process(_delta: float) -> void:
+	_rebuild_spatial_grid()
+
+
+func _rebuild_spatial_grid() -> void:
+	_spatial_grid.clear()
+	for enemy in _active_enemies:
+		if not is_instance_valid(enemy):
+			continue
+		if not (enemy as Node).is_in_group("enemies"):
+			continue
+		var cell := _get_grid_cell((enemy as Node2D).global_position)
+		if not _spatial_grid.has(cell):
+			_spatial_grid[cell] = []
+		_spatial_grid[cell].append(enemy)
+
+
+func get_nearby_enemies(pos: Vector2, radius: float) -> Array:
+	var result: Array = []
+	var cell_radius := ceili(radius / spatial_grid_cell_size)
+	var center := _get_grid_cell(pos)
+	for dx in range(-cell_radius, cell_radius + 1):
+		for dy in range(-cell_radius, cell_radius + 1):
+			var cell := Vector2i(center.x + dx, center.y + dy)
+			if _spatial_grid.has(cell):
+				result.append_array(_spatial_grid[cell])
+	return result
+
+
+func _get_grid_cell(pos: Vector2) -> Vector2i:
+	return Vector2i(int(pos.x / spatial_grid_cell_size), int(pos.y / spatial_grid_cell_size))

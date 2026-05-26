@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_PowerUpData")
 id = "boulder_shot"
-display_name = "Boulder Shot"
-description = "Fires a massive slow projectile that crushes through all enemies. Each rank increases size and damage."
+display_name = "Junk Slug"
+description = "Fires a massive compressed scrap mass that crushes through all enemies. Each rank increases size and damage."
 rarity = 2
 category = 2
 max_stacks = 1

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PowerUpData" format=3 uid="uid://cmgnt2m3n4o5p"]
+
+[ext_resource type="Script" uid="uid://c6rwp657h3iie" path="res://scripts/PowerUpData.gd" id="1_mgnt"]
+
+[resource]
+script = ExtResource("1_mgnt")
+id = "combo_magnetic"
+display_name = "Magnetic Core"
+description = "Blends ice and lightning into a magnetic field. Frozen enemies pulled and shocked."
+rarity = 3
+category = 1
+modifier_type = 1
+amount = 0.4
+element_type = 2
+element_type_b = 3
+min_wave = 7
+metadata/_custom_type_script = "uid://c6rwp657h3iie"
